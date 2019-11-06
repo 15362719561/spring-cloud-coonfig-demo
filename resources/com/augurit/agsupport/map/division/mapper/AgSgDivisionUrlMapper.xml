@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.augurit.agsupport.map.division.mapper.AgSgDivisionUrlMapper">
+    <sql id="allColumns">
+        ID id,
+        DESCRIPTION description,
+        URL url,
+        LAYER_TYPE layerType,
+        KEYWORD keyword
+    </sql>
+    <!--查询所有用地分类-->
+    <select id="findAllList" resultType="AgSgDivisionUrl">
+        SELECT
+        <include refid="allColumns"/>
+        FROM ag_sg_division_url
+        WHERE
+        1 = 1
+    </select>
+
+    <!--根据id查找-->
+    <select id="findById" resultType="AgSgDivisionUrl">
+        SELECT
+        <include refid="allColumns"/>
+        FROM ag_sg_division_url
+        WHERE
+        ID = #{id}
+    </select>
+
+    <!--根据url查找-->
+    <select id="getDivisionUrlByUrl" resultType="AgSgDivisionUrl">
+        SELECT
+        <include refid="allColumns"/>
+        FROM ag_sg_division_url
+        WHERE
+        URL = #{url}
+    </select>
+
+   <!-- 保存-->
+    <insert id="save">
+        INSERT
+        INTO ag_sg_division_url (
+        ID,DESCRIPTION,URL,Layer_TYPE,KEYWORD
+        ) VALUES (
+        #{id},#{description},#{url},#{layerType},#{keyword}
+        )
+    </insert>
+    <!--<insert id="save">
+        INSERT
+        INTO ag_sg_division_url (
+        ID,DESCRIPTION,URL,KEYWORD
+        ) VALUES (
+        #{id},#{description},#{url},#{keyword}
+        )
+    </insert>-->
+
+    <!--修改-->
+    <update id="update">
+        UPDATE ag_sg_division_url
+        <set>
+            <if test="description != null">
+                DESCRIPTION = #{description},
+            </if>
+            <if test="url != null">
+                URL = #{url},
+            </if>
+            <if test="layerType != null">
+                LAYER_TYPE = #{layerType},
+            </if>
+            <if test="keyword != null">
+                KEYWORD = #{keyword}
+            </if>
+        </set>
+        WHERE
+        ID = #{id}
+    </update>
+
+    <!--删除-->
+    <delete id="deleteById">
+        DELETE
+        FROM
+        ag_sg_division_url
+        WHERE
+        ID = #{id}
+    </delete>
+
+    <!--批量删除-->
+    <delete id="deleteBatch">
+        DELETE
+        FROM
+        ag_sg_division_url
+        WHERE ID IN
+        <foreach collection="ids" item="item" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </delete>
+    <!--清空表格-->
+    <delete id="truncateTable">
+        TRUNCATE TABLE ag_sg_division_url
+    </delete>
+</mapper>

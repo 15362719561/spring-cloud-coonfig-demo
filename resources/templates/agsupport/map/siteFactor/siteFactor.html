@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>选址因子配置</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <link rel="stylesheet" th:href="@{/agsupport/map/css/lib/element.ui-v2.10.1.css}">
+    <link rel="stylesheet" th:href="@{/agsupport/map/siteFactor/css/siteFactor.css}">
+    <script>
+        var ctx = '[[@{/}]]';
+    </script>
+</head>
+<body>
+
+<div id="app" v-cloak>
+    <!--标题-->
+    <el-col :span="24" class="toolbar"
+            v-if="siteFactor.titleVisible"
+            style="padding: 0px 15px;margin-bottom: 0px;background: #f2f2f2;font-size: 14px;">
+        <el-form :inline="true">
+            <el-form-item>
+                <el-divider direction="vertical"></el-divider>
+                <strong>选址因子配置</strong>
+            </el-form-item>
+        </el-form>
+    </el-col>
+
+    <!--工具条-->
+    <el-col :span="24" class="toolbar"
+            v-if="siteFactor.toolVisible"
+            style="padding: 8px 15px;margin-bottom: 0px;background: #f2f2f2;margin: 10px 0px;">
+        <el-form :inline="true">
+            <el-form-item>
+                <el-button type="primary" size="small" @click="importLayerView">图层导入</el-button>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" size="small" @click="addParam('catalog')">新增目录</el-button>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" size="small" @click="addParam">新增因子</el-button>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" size="small" @click="saveParamItem">保存</el-button>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="danger" size="small" @click="deleteSiteFactor">删除</el-button>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" size="small" @click="loadTreeData">刷新</el-button>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" size="small" @click="layerProjectView">项目类型关联</el-button>
+            </el-form-item>
+        </el-form>
+    </el-col>
+
+    <!--因子列表-->
+    <el-table :data="siteFactor.treeData"
+              ref="siteFactorTable"
+              style="width: 100%;margin-bottom: 20px;"
+              :row-style="siteFactor.rowStyle"
+              :header-cell-style="{background:'#eef1f6',color:'#606266',height:'40px','border-right':'solid #e3e3e3 1px'}"
+              row-key="id"
+              :expand-row-keys="siteFactor.expandRowKeys"
+              header-align="center"
+              border
+              :indent="28"
+              :height="siteFactor.tableHeight"
+              v-loading="siteFactor.dataLoading"
+              :element-loading-text="siteFactor.dataLoadingTip"
+              highlight-current-row
+              :default-expand-all="false"
+              @select="onTableRowSelect"
+              @select-all="onTableSelectAll"
+              @selection-change="onTableRowSelectionChange"
+              :tree-props="{children: 'children', hasChildren: 'hasChildren'}"
+              v-if="siteFactor.layerViewVisible">
+        <el-table-column
+                type="selection"
+                width="40">
+        </el-table-column>
+        <el-table-column prop="name" label="名称" width="180">
+            <template slot-scope="scope">
+                <el-input v-model="scope.row.name" size="small" auto-complete="off"
+                          :class="scope.row.type == '0' ? 'tree_edit_input_0' : 'tree_edit_input_1'"></el-input>
+            </template>
+        </el-table-column>
+        <el-table-column label="管控类型" width="160">
+            <template slot-scope="scope">
+                <el-select v-model="scope.row.major" v-show="scope.row.type == '0'" size="small" placeholder="请选择">
+                    <el-option
+                            v-for="item in siteFactor.controlTypes"
+                            :key="item.value"
+                            :label="item.name"
+                            :value="item.value">
+                    </el-option>
+                </el-select>
+            </template>
+        </el-table-column>
+        <el-table-column label="图层类型:"  width="200">
+            <template slot-scope="scope">
+                <el-select v-model="scope.row.layerType"
+                           v-show="scope.row.type == '0'"
+                           size="small" placeholder="请选择">
+                    <el-option
+                            v-for="item in siteFactor.layerTypes"
+                            :key="item.code"
+                            :label="item.name"
+                            :value="item.code">
+                    </el-option>
+                </el-select>
+            </template>
+        </el-table-column>
+        <el-table-column label="地块筛选图层" width="100">
+            <template slot-scope="scope">
+                <el-switch
+                        v-show="scope.row.type == '0'"
+                        v-model="scope.row.isDataLayer"
+                        @change="toggleIsDataLayer($event,scope.row)"
+                        active-value="1"
+                        inactive-value="0">
+                </el-switch>
+            </template>
+        </el-table-column>
+        <el-table-column prop="url" label="服务地址">
+            <template slot-scope="scope">
+                <el-input v-model="scope.row.url" size="small" auto-complete="off"
+                          v-show="scope.row.type == '0'"></el-input>
+            </template>
+        </el-table-column>
+        <el-table-column prop="typeField" label="类型字段" width="160">
+            <template slot-scope="scope">
+                <el-select v-model="scope.row.typeField" v-show="scope.row.type == '0'"
+                           size="small" placeholder="请选择" @focus="setFieldsBylayerUrl(scope.row)">
+                    <el-option
+                            v-for="item in siteFactor.layerFields"
+                            :key="item.name"
+                            :label="item.name === item.alias ? item.alias : item.name + '(' + item.alias + ')'"
+                            :value="item.name">
+                    </el-option>
+                </el-select>
+            </template>
+        </el-table-column>
+        <el-table-column prop="areaField" label="面积字段" width="160">
+            <template slot-scope="scope">
+                <el-select v-model="scope.row.areaField" v-show="scope.row.type == '0'"
+                           size="small" placeholder="请选择" @focus="setFieldsBylayerUrl(scope.row)">
+                    <el-option
+                            v-for="item in siteFactor.layerFields"
+                            :key="item.name"
+                            :label="item.name === item.alias ? item.alias : item.name + '(' + item.alias + ')'"
+                            :value="item.name">
+                    </el-option>
+                </el-select>
+            </template>
+        </el-table-column>
+    </el-table>
+
+    <!-- 添加图层 弹窗 start -->
+    <el-dialog title="添加图层" :visible.sync="layerDialogVisible" class="add-dialog">
+        <div class="dialog-pop">
+            <el-input placeholder="搜索" v-model="layerKeyword" clearable
+                      @input="layerTableCurrentPage = 1;layerShowTable()"
+                      style="width:200px;float:right;margin-bottom: 10px;"></el-input>
+            <el-table :data="layerTableData" v-loading="layerLoading" border style="width: 100%;" height="300px"
+                      @selection-change="layerHandleSelectionChange" @row-click="layerHandleRowSelection"
+                      ref="layerRowSelection">
+                <el-table-column type="selection" width="50"></el-table-column>
+                <el-table-column prop="name" label="图层名称"></el-table-column>
+                <el-table-column prop="layerTable" label="图层表名"></el-table-column>
+                <el-table-column prop="layerTypeCn" label="图层类型"></el-table-column>
+                <el-table-column prop="dirPath" label="所在目录"></el-table-column>
+            </el-table>
+            <el-pagination
+                    background
+                    align="right"
+                    :pager-count="4"
+                    @size-change="layerHandleSizeChange"
+                    @current-change="layerHandleCurrentChange"
+                    :page-sizes="[10, 20, 30, 50]"
+                    :page-size="layerTablePageSize"
+                    :current-page="layerTableCurrentPage"
+                    layout="total,sizes, prev, pager, next, jumper"
+                    :total="layerTableTotal" style="padding-top: 10px;">
+            </el-pagination>
+        </div>
+        <div slot="footer" class="dialog-footer">
+            <el-button size="small" @click.native="layerDialogVisible = false">取消</el-button>
+            <el-button size="small" type="primary" @click.native="selLayers()">导入</el-button>
+        </div>
+    </el-dialog>
+    <!-- 添加图层 弹窗 end -->
+
+    <!--项目关联界面-->
+    <el-dialog
+            title="项目类型关联"
+            :close-on-click-modal="false"
+            :visible.sync="siteFactor.editLayerProjectViewVisible">
+        <el-row style="padding: 10px 0px 0px 0px;">
+            <el-form :inline="true" style="height: 40px;">
+                <el-form-item label="国标行业分类:">
+                    <el-select @change="projectSelectChange" size="small" v-model="siteFactor.projectSelectValue"
+                               placeholder="请选择">
+                        <el-option
+                                v-for="item in siteFactor.projectDatas"
+                                :key="item.value"
+                                :label="item.name"
+                                :value="item.value">
+                        </el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item>
+                    <el-button size="small" type="primary" @click.native="saveProjectSiteFactor()">保存</el-button>
+                </el-form-item>
+                <el-form-item>
+                    <el-button size="small" type="primary" @click.native="projectSelectChange(siteFactor.projectSelectValue)">刷新</el-button>
+                </el-form-item>
+            </el-form>
+        </el-row>
+        <div class="div-tree">
+            <div class="tree-element">
+                <el-tree :data="siteFactor.currTreeData" :props="siteFactor.treeProps" show-checkbox
+                         node-key="code"
+                         ref="tree"
+                         :default-checked-keys="siteFactor.currTreechecked"
+                         :default-expanded-keys="siteFactor.currTreechecked"
+                         @check-change="treeCheckChange">
+                </el-tree>
+            </div>
+            <el-row style="text-align: right;padding-top: 10px;">
+                <el-button size="small" type="primary" @click.native="operTreeDiv('sel')">确定</el-button>
+                <el-button size="small" type="primary" @click.native="operTreeDiv()">取消</el-button>
+            </el-row>
+        </div>
+        <!--项目与类型关联配置列表-->
+        <template v-for="controlType in siteFactor.controlTypes">
+            <el-row class="label-row">
+                {{controlType.name}}
+            </el-row>
+            <el-table :data="controlType.projectSiteFactors"
+                      border sortable="true" :header-cell-style="{background:'#eef1f6',color:'#606266'}"
+                      style="width: 100%;"
+                      :tree-props="{children: 'children', hasChildren: 'hasChildren'}"
+                      row-key="factorId">
+                <el-table-column prop="name" label="名称" width="180">
+                </el-table-column>
+                <el-table-column prop="allowIntersect" label="是否允许相交" width="120" v-if="controlType.value == '1'">
+                    <template slot-scope="scope">
+                        <el-select v-model="scope.row.allowIntersect" v-show="scope.row.type == '0'" size="small"
+                                   placeholder="请选择">
+                            <el-option
+                                    v-for="item in siteFactor.booleanDatas"
+                                    :key="item.value"
+                                    :label="item.name"
+                                    :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="effect" label="因子效应" width="140" v-if="controlType.value != '1'">
+                    <template slot-scope="scope">
+                        <el-select v-model="scope.row.effect" v-show="scope.row.type == '0'" size="small"
+                                   placeholder="请选择">
+                            <el-option
+                                    v-for="item in siteFactor.effectDatas"
+                                    :key="item.value"
+                                    :label="item.name"
+                                    :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="rangeValue" label="因子阈值（米）" v-if="controlType.value != '1'">
+                    <template slot-scope="scope">
+                        <el-input v-model="scope.row.rangeValue" size="small" auto-complete="off"
+                                  v-show="scope.row.type == '0' && (scope.row.effect == '2' || scope.row.effect == '-2')"></el-input>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="weight" label="权重" v-if="controlType.value != '1'">
+                    <template slot-scope="scope">
+                        <el-input v-model="scope.row.weight" size="small" auto-complete="off"
+                                  v-show="scope.row.type == '0'"></el-input>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="typeWhere" label="类型条件">
+                    <template slot-scope="scope">
+                        <el-input v-model="scope.row.typeWhere" size="small" auto-complete="off" v-show="scope.row.type == '0'"></el-input>
+                        <!--<el-input v-model="scope.row.typeWhere" @focus="rangeSelectFocus(scope.row)" v-show="scope.row.type == '0'"></el-input>-->
+                    </template>
+                </el-table-column>
+            </el-table>
+        </template>
+    </el-dialog>
+</div>
+
+<script th:src="@{/agsupport/map/js/lib/vue-v2.5.22.js}"></script>
+<script th:src="@{/agsupport/map/js/lib/jquery-2.2.4.min.js}"></script>
+<script th:src="@{/agsupport/map/js/lib/element.ui-v2.10.1.js}"></script>
+<script th:src="@{/agsupport/map/siteFactor/js/siteFactor.js}"></script>
+<script th:src="@{/agsupport/map/js/interact/interact.min-v1.6.2.js}"></script>
+<script th:src="@{/agsupport/map/js/interact/common.js}"></script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+body,html {
+    width:100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+#app {
+    height: 100%
+}
+
+#app .el-checkbox {
+    display: block !important;
+}
+
+#app .el-dropdown-menu {
+    height: 200px;
+    overflow-y: auto;
+}
+#app .el-table td, #app .el-table th {
+    padding: 10px 0px !important;
+}
+
+#app .el-table {
+    font-size: 12px;!important;
+}
+#app .toolbar .el-form-item {
+    margin-bottom: 0px !important;
+}
+#app .el-divider--vertical {
+    background-color: #409eff;
+}
+
+#app .el-page-header__content {
+    font-size: 14px;
+    color: #303133;
+}
+
+#app .el-table--enable-row-hover .el-table__body tr:hover>td{
+    background-color: #EBEEF5 !important;
+    border-right: solid #e3e3e3 1px !important;
+}
+
+#app .el-dialog__body {
+    padding: 10px 20px;
+}
+
+#app .el-divider--horizontal {
+    display: block;
+    height: 1px;
+    width: 100%;
+    margin: 12px 0px;
+}
+
+#app .el-dialog__header {
+    height: 48px;
+    line-height: 48px;
+    padding: 0px 20px;
+    border-bottom: 1px solid rgb(235, 237, 242);
+}
+
+#app .select_button {
+    border-radius: 2px !important;
+    padding: 7px 4px !important;
+}
+
+#layerImportDialog .el-form-item {
+    margin-bottom: 5px !important;
+}
+
+#loadLayerResourceDialog .el-header {
+    padding: 5px 10px !important;
+}
+
+#loadLayerResourceDialog .el-main {
+    padding: 0 !important;
+}
+
+#layerImportDialog .el-form-item{
+    width: calc(100% - 30px) !important;
+}
+
+#layerImportDialog .el-form-item__content{
+    width: calc(100% - 90px) !important;
+}
+
+#layerImportDialog .el-select {
+    width: 100%;
+}
+
+#app .el-dialog__headerbtn {
+    top: 15px !important;
+}
+
+[v-cloak] {
+    display: none;
+}

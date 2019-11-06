@@ -1,0 +1,97 @@
+body, html {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+#app {
+    height: 100%
+}
+
+#app .el-checkbox {
+    display: block !important;
+}
+
+#app .el-transfer-panel {
+    width: calc(50% - 70px) !important;
+    height: 100% !important;
+}
+
+#app .el-transfer-panel {
+    border: 1px solid #e4e4e4;
+}
+
+#app .el-transfer-panel__body {
+    height: calc(100% - 70px) !important;
+}
+
+#app .el-transfer-panel__list.is-filterable {
+    height: calc(100% - 80px) !important;
+}
+
+#app .el-dropdown-menu {
+    height: 200px;
+    overflow-y: auto;
+}
+
+#app .el-table td, #conflictCheckLayerLandTypeManage .el-table th {
+    padding: 5px 0px !important;
+}
+
+#app .el-transfer-panel__footer {
+    text-align: right;
+    padding-right: 10px;
+}
+
+#app .el-table {
+    font-size: 13px;
+!important;
+}
+
+#app .toolbar .el-form-item {
+    margin-bottom: 0px !important;
+}
+
+#app .el-transfer-panel .el-transfer-panel__header {
+    padding: 8px;
+}
+
+.tree_edit_input_0 {
+    width: calc(100% - 48px) !important;
+}
+
+.tree_edit_input_1 {
+    width: calc(100% - 30px) !important;
+}
+
+.label-row {
+    padding: 10px 0px;
+    font-size: 14px;
+    font-weight: bolder;
+}
+
+.el-dialog__body {
+    padding: 0px 20px 10px 20px;
+}
+
+.div-tree {
+    display: none;
+    height: 200px;
+    min-width: 150px;
+    position: absolute;
+    z-index: 11;
+    padding: 5px;
+    border: 1px solid #e4e7ea;
+    background: #fff;
+}
+
+.div-tree .tree-element {
+    overflow-y: auto;
+    height: calc(100% - 40px);
+}
+
+[v-cloak] {
+    display: none;
+}

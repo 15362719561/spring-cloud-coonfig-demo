@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>用地标准配置</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" th:href="@{/agsupport/map/css/lib/element.ui-v2.10.1.css}">
+    <link rel="stylesheet" th:href="@{/agsupport/map/landTypeStandards/landTypeStandards.css}">
+    <script>
+        var ctx = '[[@{/}]]';
+    </script>
+</head>
+<body>
+<div id="app" v-cloak>
+
+    <!--工具条-->
+    <el-col :span="24" class="toolbar"
+            style="padding: 8px 15px;margin-bottom: 0px;background: #f2f2f2;margin: 10px 0px;">
+        <el-form :inline="true">
+            <el-form-item label="分类:">
+                <el-select
+                        @change="typeSelectChange"
+                        v-model="landTypeStandards.selectType"
+                        size="medium" placeholder="请选择分类">
+                    <el-option
+                            v-for="(item,i) in landTypeStandards.types"
+                            :key="item"
+                            :label="item"
+                            :value="item">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="版本:">
+                <el-select
+                        v-model="landTypeStandards.selectVersion"
+                        size="medium"
+                        placeholder="请选择版本">
+                    <el-option
+                            v-for="(item,i) in landTypeStandards.versions"
+                            :key="item"
+                            :label="item"
+                            :value="item">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" size="small" @click="searchLandType">查询</el-button>
+                <el-button type="primary" size="small" @click="clearSearchLandType">清除查询</el-button>
+                <el-button type="primary" size="small" @click="addParentLandType">新增</el-button>
+                <el-button type="danger" size="small" @click="deleteLandTypes">删除</el-button>
+            </el-form-item>
+        </el-form>
+    </el-col>
+
+    <!--用地类型标准配置表-->
+    <el-table
+            :data="landTypeStandards.landTypeTreeData"
+            ref="landTypeStandardsTable"
+            style="width: 100%;margin-bottom: 20px;"
+            :row-style="landTypeStandards.rowStyle"
+            :header-cell-style="{background:'#eef1f6',color:'#606266',height:'40px','border-right':'solid #e3e3e3 1px'}"
+            row-key="rowKey"
+            :expand-row-keys="landTypeStandards.expandRowKeys"
+            header-align="center"
+            border
+            :indent="28"
+            :height="landTypeStandards.landTypesTableHeight"
+            v-loading="landTypeStandards.landTypesDataLoading"
+            :element-loading-text="landTypeStandards.landTypesDataLoadingTip"
+            highlight-current-row
+            :default-expand-all="false"
+            @select="onTableRowSelect"
+            @select-all="onTableSelectAll"
+            @selection-change="onTableRowSelectionChange"
+            :default-sort="{prop: 'code', order: 'ascending'}"
+            :tree-props="{children: 'children', hasChildren: 'hasChildren'}">
+        <el-table-column
+                type="selection"
+                width="40">
+        </el-table-column>
+        <el-table-column
+                align="left"
+                prop="code"
+                label="分类编码"
+                sortable
+                class-name="table_strong_padding"
+                width="280">
+            <template slot="header" slot-scope="scope">分类编码</template>
+            <template slot-scope="scope">
+                <el-input
+                        v-if="scope.row.editStatus"
+                        v-model="scope.row.code"
+                        auto-complete="off" size="medium"
+                        :class="scope.row.parentId === '' && scope.row.id ==='' ? 'table_edit_input2' : 'table_edit_input1'"></el-input>
+                <el-tag v-if="!scope.row.editStatus && Number(scope.row.codeSort) < 2"
+                        :type="'info'"
+                        style="font-weight: bold;color:rgb(96, 98, 102);"
+                        disable-transitions>{{scope.row.code}}</el-tag>
+                <a v-if="!scope.row.editStatus && Number(scope.row.codeSort) > 1" disable-transitions>{{scope.row.code}}</a>
+                <el-tooltip
+                        style="float: right;margin-top: 5px;margin-right: 10px;"
+                        v-if="!scope.row.editStatus && scope.row.codeSort == '1'"
+                        :content="scope.row.isDefault == '0' ? '设为默认'+ scope.row.type +'版本':'取消设置默认'+ scope.row.type +'版本'" placement="right">
+                    <el-switch
+                            v-model="scope.row.isDefault"
+                            @change="toggleDefaultLandVersion($event,scope.row)"
+                            active-value="1"
+                            inactive-value="0">
+                    </el-switch>
+                </el-tooltip>
+            </template>
+        </el-table-column>
+        <el-table-column
+                align="center"
+                prop="name"
+                label="分类名称"
+                sortable>
+            <template slot="header" slot-scope="scope">分类名称</template>
+            <template slot-scope="scope">
+                <el-input v-if="scope.row.editStatus"
+                          v-model="scope.row.name"
+                          auto-complete="off"
+                          size="medium"
+                          class="table_edit_input2">
+                </el-input>
+                <el-tag v-if="!scope.row.editStatus && Number(scope.row.codeSort) < 2" :type="'info'" style="font-weight: bold;color:rgb(96, 98, 102);"
+                        disable-transitions>{{scope.row.name}}</el-tag>
+                <a v-if="!scope.row.editStatus && Number(scope.row.codeSort) > 1">{{scope.row.name}} </a>
+            </template>
+        </el-table-column>
+        <el-table-column align="center">
+            <template slot="header" slot-scope="scope">填充颜色</template>
+            <template slot-scope="scope">
+                <el-col :span="14">
+                    <el-input
+                            v-if="scope.row.editStatus && (Number(scope.row.codeSort) >=2 )"
+                            v-model="scope.row.color"
+                            auto-complete="off"
+                            size="medium"
+                            class="table_edit_input2"></el-input>
+                </el-col>
+                <div class="inline-block">
+                    <el-color-picker
+                            v-model="scope.row.color"
+                            size="small"
+                            v-if="Number(scope.row.codeSort) >=2"></el-color-picker>
+                </div>
+            </template>
+        </el-table-column>
+        <el-table-column align="center">
+            <template slot="header" slot-scope="scope">边框颜色</template>
+            <template slot-scope="scope">
+                <el-col :span="14">
+                    <el-input v-if="scope.row.editStatus && (Number(scope.row.codeSort) >= 2)"
+                              v-model="scope.row.lineColor"
+                              class="table_edit_input2"
+                              auto-complete="off" size="medium" ></el-input>
+                </el-col>
+                <div class="inline-block">
+                    <el-color-picker v-model="scope.row.lineColor" size="small"
+                                     v-if="Number(scope.row.codeSort) >=2"></el-color-picker>
+                </div>
+            </template>
+        </el-table-column>
+        <el-table-column align="center" width="280">
+            <template slot="header" slot-scope="scope">操作</template>
+            <template slot-scope="scope">
+                <el-button size="mini" type="primary" @click.native="addChildLandType(scope.row)">新增子节点</el-button>
+                <el-button size="mini" type="success" v-if="!scope.row.editStatus" @click.native="editLandType(scope.row)">编辑</el-button>
+                <el-button size="mini" type="primary" v-if="scope.row.editStatus" @click.native="saveLandType(scope.row)">保存</el-button>
+                <el-button size="mini" v-if="scope.row.editStatus" @click.native="cancelEditLandType(scope.row)">取消</el-button>
+            </template>
+        </el-table-column>
+    </el-table>
+
+
+</div>
+
+<script th:src="@{/agsupport/map/js/lib/vue-v2.5.22.js}"></script>
+<script th:src="@{/agsupport/map/js/lib/jquery-2.2.4.min.js}"></script>
+<script th:src="@{/agsupport/map/js/lib/element.ui-v2.10.1.js}"></script>
+<script th:src="@{/agsupport/map/landTypeStandards/landTypeStandards.js}"></script>
+<script th:src="@{/agsupport/map/js/interact/interact.min-v1.6.2.js}"></script>
+<script th:src="@{/agsupport/map/js/interact/common.js}"></script>
+</body>
+</html>

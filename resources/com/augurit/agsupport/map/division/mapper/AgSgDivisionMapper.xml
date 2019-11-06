@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.augurit.agsupport.map.division.mapper.AgSgDivisionMapper">
+
+    <sql id="allColumns">
+        ID id,
+        NAME name,
+        CODE code,
+        PCODE pcode,
+        DESCRIPTION description,
+        REF_URL refUrl,
+        SORTID sortId
+    </sql>
+
+    <!--条件查询-->
+    <select id="findList" resultType="AgSgDivision">
+        SELECT
+        <include refid="allColumns"/>
+        FROM ag_sg_division
+        WHERE
+        1 = 1
+        <if test="name != null">
+            and NAME like CONCAT(CONCAT('%', TRIM(#{name})), '%')
+        </if>
+        <if test="description != null">
+            and DESCRIPTION like CONCAT(CONCAT('%', TRIM(#{description})), '%')
+        </if>
+        <if test="pcode != null">
+            and PCODE = #{pcode}
+        </if>
+        ORDER BY SORTID desc
+    </select>
+
+    <!--查询所有行政区划-->
+    <select id="findAllList" resultType="AgSgDivision">
+        SELECT
+        <include refid="allColumns"/>
+        FROM ag_sg_division
+        WHERE
+        1 = 1
+        ORDER BY SORTID desc
+    </select>
+
+    <!--根据id查找-->
+    <select id="findById" resultType="AgSgDivision">
+        SELECT
+        <include refid="allColumns"/>
+        FROM ag_sg_division
+        WHERE
+        ID = #{id}
+    </select>
+
+    <!--根据code查找-->
+    <select id="findByCode" resultType="AgSgDivision">
+        SELECT
+        <include refid="allColumns"/>
+        FROM ag_sg_division
+        WHERE
+        CODE = #{code}
+        <if test="id != null">
+            and ID != #{id}
+        </if>
+    </select>
+
+    <!--根据pCode查找-->
+    <select id="findByPCode" resultType="AgSgDivision">
+        SELECT
+        a.ID id,
+        a.NAME name,
+        a.CODE code,
+        a.PCODE pcode,
+        a.DESCRIPTION description,
+        a.REF_URL refUrl,
+        a.SORTID sortId,
+        b.url,
+        b.keyword
+        FROM ag_sg_division a,ag_sg_division_url b
+        WHERE
+        a.ref_url = b.id
+        <if test="description != null">
+            and a.DESCRIPTION like #{description}
+        </if>
+        <if test="pcode != null">
+            and a.PCODE = #{pcode}
+        </if>
+        <if test="pcode == null">
+            and a.PCODE is null
+        </if>
+        ORDER BY SORTID desc
+    </select>
+
+    <!--保存-->
+    <insert id="save">
+        INSERT
+        INTO ag_sg_division (
+        ID,NAME,CODE,PCODE,REF_URL,DESCRIPTION,SORTID
+        ) VALUES (
+        #{id},#{name},#{code},#{pcode},#{refUrl},#{description},#{sortId}
+        )
+    </insert>
+
+    <!--修改-->
+    <update id="update">
+        UPDATE ag_sg_division
+        <set>
+            <if test="name != null">
+                NAME = #{name},
+            </if>
+            <if test="code != null">
+                CODE = #{code},
+            </if>
+            <if test="pcode != null">
+                PCODE = #{pcode},
+            </if>
+            <if test="refUrl != null">
+                REF_URL = #{refUrl},
+            </if>
+            <if test="description !=null">
+                DESCRIPTION = #{description},
+            </if>
+            <if test="sortId !=null">
+                SORTID = #{sortId},
+            </if>
+        </set>
+        WHERE
+        ID = #{id}
+    </update>
+
+
+    <!--删除-->
+    <delete id="deleteById">
+        DELETE
+        FROM
+        ag_sg_division
+        WHERE
+        ID = #{id}
+    </delete>
+
+    <!--批量删除-->
+    <delete id="deleteBatch">
+        DELETE
+        FROM
+        ag_sg_division
+        WHERE ID IN
+        <foreach collection="ids" item="item" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </delete>
+    <!--清空表格-->
+    <delete id="truncateTable">
+        TRUNCATE TABLE ag_sg_division
+    </delete>
+
+
+    <!--根据keyword查找-->
+    <select id="findByKeyword" resultType="AgSgDivision">
+        SELECT
+        a.ID id,
+        a.NAME name,
+        a.CODE code,
+        a.PCODE pcode,
+        a.DESCRIPTION description,
+        a.REF_URL refUrl,
+        a.SORTID sortId,
+        b.URL url,
+        b.KEYWORD keyword
+        FROM ag_sg_division a,ag_sg_division_url b
+        WHERE
+        a.REF_URL = b.ID
+        AND
+        (CODE = #{keyword}
+        OR
+        NAME = #{keyword})
+    </select>
+</mapper>

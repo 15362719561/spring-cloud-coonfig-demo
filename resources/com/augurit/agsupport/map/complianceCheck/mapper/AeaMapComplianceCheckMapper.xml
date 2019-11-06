@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.augurit.agsupport.map.complianceCheck.mapper.AeaMapComplianceCheckMapper">
+
+    <sql id="allColumns">
+      ID id,
+      LAYER_NAME layerName,
+      LAYER_WHERE layerWhere,
+      SEQ seq,
+      SHOW_FIELD showField,
+      TYPE_FIELD typeField,
+      REGULATION regulation,
+      SCREENSHOT screenshot,
+      STATUS status,
+      LAYER_URL layerUrl,
+      REMARK remark,
+      LAYER_TYPE layerType,
+      SOURCE source,
+      REGION region
+    </sql>
+
+    <!--按条件查询-->
+    <select id="findList" resultType="com.augurit.agsupport.map.complianceCheck.domain.AeaMapComplianceCheck">
+        SELECT
+        <include refid="allColumns"/>
+        FROM aea_map_compliance_check
+        WHERE
+        1 = 1
+        <if test="layerName != null">
+            AND layer_name LIKE CONCAT(CONCAT('%', TRIM(#{layerName})), '%')
+        </if>
+        ORDER BY seq ASC
+    </select>
+
+    <!--按id查找-->
+    <select id="findById" resultType="com.augurit.agsupport.map.complianceCheck.domain.AeaMapComplianceCheck">
+        SELECT
+        <include refid="allColumns"/>
+        FROM
+        aea_map_compliance_check
+        WHERE
+        id = #{id}
+    </select>
+
+    <!--保存-->
+    <insert id="save">
+      INSERT INTO aea_map_compliance_check(id, layer_name, layer_where, seq, show_field, type_field, regulation, screenshot, status, remark, layer_url, layer_type,source,region) VALUES (
+      #{id}, #{layerName}, #{layerWhere}, #{seq}, #{showField}, #{typeField}, #{regulation}, #{screenshot}, #{status}, #{remark}, #{layerUrl}, #{layerType}, #{source}, #{region}
+      )
+    </insert>
+
+    <!--删除-->
+    <delete id="delete">
+      DELETE
+      FROM
+      aea_map_compliance_check
+      WHERE
+      id = #{id}
+    </delete>
+
+    <!--批量删除-->
+    <delete id="deleteBatch">
+        DELETE
+        FROM
+        aea_map_compliance_check
+        WHERE id IN
+        <foreach collection="ids" item="item" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </delete>
+
+    <update id="update">
+        UPDATE aea_map_compliance_check
+        <set>
+            <if test="layerWhere != null">
+                layer_where = #{layerWhere},
+            </if>
+            <if test="seq != null">
+                seq = #{seq},
+            </if>
+            <if test="showField != null">
+                show_field = #{showField},
+            </if>
+            <if test="typeField != null">
+                type_field = #{typeField},
+            </if>
+            <if test="regulation != null">
+                regulation = #{regulation},
+            </if>
+            <if test="screenshot != null">
+                screenshot = #{screenshot},
+            </if>
+            <if test="status != null">
+                status = #{status},
+            </if>
+            <if test="remark != null">
+                remark = #{remark},
+            </if>
+            <if test="layerName != null">
+                layer_name = #{layerName},
+            </if>
+            <if test="source != null">
+                source = #{source},
+            </if>
+            <if test="layerType != null">
+                layer_type = #{layerType},
+            </if>
+            <if test="region != null">
+                region = #{region},
+            </if>
+            <if test="layerUrl != null">
+                layer_url = #{layerUrl}
+            </if>
+        </set>
+        WHERE
+        id = #{id}
+    </update>
+
+    <insert id="saveLayers" parameterType="java.util.List">
+        INSERT INTO aea_map_compliance_check(id, layer_name, layer_where, seq, show_field, type_field, regulation,
+        screenshot, status, remark, layer_url, layer_type,source,region)
+        VALUES
+        <foreach collection="layers" item="item" separator=",">
+            (#{item.id},#{item.layerName},#{item.layerWhere},#{item.seq},#{item.showField},
+            #{item.typeField},#{item.regulation},#{item.screenshot},#{item.status},#{item.remark},
+            #{item.layerUrl},#{item.layerType},#{item.source},#{item.region})
+        </foreach>
+    </insert>
+
+    <insert id="saveByLayerIds">
+        INSERT INTO aea_map_compliance_check(id, layer_name, layer_where, seq, show_field, type_field, regulation,
+        screenshot, status, remark, layer_url, layer_type,source,region) select
+        UUID(),a.name_cn,'1=1',null,'','','',0,0,'',CONCAT(CONCAT(a.url,'/'),a.layer_table),a.name_cn,a.id,''
+        from ag_layer a
+        where
+        a.id IN
+        <foreach collection="layerIds" item="item" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </insert>
+
+    <insert id="saveLeafletByLayerIds">
+        INSERT INTO aea_map_compliance_check(id, layer_name, layer_where, seq, show_field, type_field, regulation,
+        screenshot, status, remark, layer_url, layer_type,source,region) select
+        UUID(),a.name_cn,'1=1',null,'','','',0,0,'',CONCAT(CONCAT(a.url,'?typeName='),a.layer_table),a.name_cn,a.id,''
+        from ag_layer a
+        where
+        a.id IN
+        <foreach collection="layerIds" item="item" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </insert>
+</mapper>

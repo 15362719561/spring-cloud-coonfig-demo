@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>行政区划管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" th:href="@{/agsupport/map/css/lib/element.ui-v2.10.1.css}">
+    <link rel="stylesheet" th:href="@{/agsupport/map/division/division.css}">
+    <script>
+        var ctx = '[[@{/}]]';
+    </script>
+</head>
+<body>
+<div id="app" v-cloak>
+    <!--工具条-->
+    <el-col :span="24" class="toolbar"
+            style="padding: 8px 15px;margin-bottom: 0px;background: #f2f2f2;margin: 10px 0px;">
+        <el-form :inline="true">
+            <el-form-item>
+                <el-input @input="searchKeyChange"
+                        v-model="division.layerSearch" placeholder="输入关键字查询" size="medium">
+                    <i class="el-icon-search el-input__icon" v-if="division.layerSearch === ''" slot="suffix"
+                       style="font-weight: bold"></i>
+                    <i class="el-icon-close el-input__icon"  v-if="division.layerSearch !== ''"
+                       slot="suffix"
+                       @click="clearSearch"
+                       style="font-weight: bold"></i>
+                </el-input>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" size="small" @click="addLayer">新增</el-button>
+                <el-button type="primary" size="small" @click="showLayerImportDialog">从指定图层导入</el-button>
+                <el-button type="primary" size="small" @click="clearSearch">刷新</el-button>
+                <el-button type="danger" size="small" @click="deleteLayers">删除</el-button>
+            </el-form-item>
+        </el-form>
+    </el-col>
+
+    <!--图层列表-->
+    <el-table
+              :data="division.layers"
+              sortable="true"
+              border
+              style="width: 100%"
+              :header-cell-style="{background:'#eef1f6',color:'#606266',height:'40px'}"
+              header-align="center"
+              row-key="id"
+              ref="divisionLayerTable"
+              show-overflow-tooltip="true"
+              v-loading="division.layersTableLoading"
+              :height="division.layersTableHeight">
+        <el-table-column type="selection" width="40">
+        </el-table-column>
+        <el-table-column prop="name" label="名称" align="center" width="160" sortable>
+            <template slot="header" slot-scope="scope">名称</template>
+            <template slot-scope="scope">
+                <el-input v-if="scope.row.editStatus" v-model="scope.row.name" auto-complete="off" size="medium"></el-input>
+                <el-tag v-if="!scope.row.editStatus"
+                        :type="'info'"
+                        style="color:rgb(96, 98, 102);"
+                        disable-transitions>{{scope.row.name}}</el-tag>
+            </template>
+        </el-table-column>
+        <el-table-column prop="code" label="编码" width="160" align="center" sortable>
+            <template slot="header" slot-scope="scope">编码</template>
+            <template slot-scope="scope">
+                <el-input v-if="scope.row.editStatus" v-model="scope.row.code" auto-complete="off" size="medium"></el-input>
+                <el-tag v-if="!scope.row.editStatus"
+                        :type="'info'"
+                        style="color:rgb(96, 98, 102);"
+                        disable-transitions>{{scope.row.code}}</el-tag>
+            </template>
+        </el-table-column>
+        <el-table-column prop="pcode" width="160" label="上级编码" align="center" sortable>
+            <template slot="header" slot-scope="scope">上级编码</template>
+            <template slot-scope="scope">
+                <el-input v-if="scope.row.editStatus" v-model="scope.row.pcode" auto-complete="off" size="medium"></el-input>
+                <el-tag v-if="!scope.row.editStatus"
+                        :type="'info'"
+                        style="color:rgb(96, 98, 102);"
+                        disable-transitions>{{scope.row.pcode}}</el-tag>
+            </template>
+        </el-table-column>
+        <el-table-column label="URL地址" align="left" sortable>
+            <template slot-scope="scope">
+                <el-select
+                        @change="urlSelChange($event,scope.row)"
+                        v-model="scope.row.url"
+                        placeholder="请选择"
+                        v-if="scope.row.editStatus" style="width: 100%;">
+                    <el-option
+                            v-for="item in division.urls"
+                            :key="item.url"
+                            :label="item.url"
+                            :value="item.url">
+                    </el-option>
+                </el-select>
+                <span v-if="!scope.row.editStatus">{{scope.row.url}}</span>
+            </template>
+        </el-table-column>
+        <el-table-column align="center" width="160">
+            <template slot="header" slot-scope="scope">操作</template>
+            <template slot-scope="scope">
+                <el-button v-if="!scope.row.editStatus" size="mini" type="primary" @click="showEditLayerView(scope.row)">编辑</el-button>
+                <el-button v-if="scope.row.editStatus" size="mini" type="primary" @click="saveLayer(scope.row)">保存</el-button>
+                <el-button v-if="scope.row.editStatus" size="mini" @click="cencelEditLayerView(scope.row)">取消</el-button>
+                <!--<el-button size="mini" type="danger" @click="deleteLayers(scope.row)">删除</el-button>-->
+            </template>
+        </el-table-column>
+    </el-table>
+
+    <!--分页工具条-->
+    <el-col :span="24" class="toolbar"
+            style="padding: 10px 8px;margin-bottom: 0px;background: #f2f2f2;margin-top:10px;position: absolute;left: 0;bottom: 0">
+        <el-pagination
+                background
+                layout="total, sizes, prev, pager, next, jumper"
+                @current-change="handleLayersPageChange"
+                :page-size="division.rows"
+                :current-page="division.currentPage"
+                :page-count="Math.ceil(division.total / division.rows)"
+                :total="division.total"
+                style="float:right;margin-right: 20px;">
+        </el-pagination>
+    </el-col>
+
+
+    <!--图层导入-->
+    <el-dialog
+            id="layerImportDialog"
+            title="图层导入"
+            :modal-append-to-body="false"
+            width="70%"
+            v-loading="division.importDataLoading"
+            :element-loading-text="division.importDataLoadingTip"
+            @closed="layerImportDialogClosed"
+            :close-on-click-modal="false"
+            :visible.sync="division.layerImportDialogVisible">
+        <el-container direction="vertical">
+            <el-container direction="vertical">
+                <el-form :inline="true" :model="division.importForm">
+                    <el-row>
+                        <span style="color: #409EFF;">一级行政区划</span>
+                        <el-divider content-position="left" direction="horizontal"></el-divider>
+                    </el-row>
+                    <el-row>
+                        <el-col :span="12">
+                            <el-form-item label="图层地址:" prop="cityUrl">
+                                <el-input ref="cityUrl" id="cityUrl"
+                                          @input="getLayerInfos($event,'city')"
+                                          v-model="division.importForm.cityUrl"
+                                          auto-complete="off"
+                                          size="small">
+                                    <template slot="append">
+                                        <el-button
+                                                @click.native="openLayerResourceDialog('city')"
+                                                type="primary"
+                                                size="mini"
+                                                class="select_button">选择</el-button>
+                                    </template>
+                                </el-input>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                            <el-form-item label="图层名称:" prop="cityName">
+                                <el-input v-model="division.importForm.cityName"
+                                        auto-complete="off" size="small" suffix-icon="xxx">
+                                </el-input>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+                    <el-row>
+                        <el-col :span="12">
+                            <el-form-item label="名称字段:">
+                                <el-select v-model="division.citySelectedNameValue" placeholder="请选择" size="small" >
+                                    <el-option
+                                            v-for="item in division.cityLayerFields"
+                                            :key="item.name"
+                                            :label="item.name"
+                                            :value="item.name">
+                                    </el-option>
+                                </el-select>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                            <el-form-item label="编码字段:">
+                                <el-select v-model="division.citySelectedFieldValue" placeholder="请选择" size="small">
+                                    <el-option
+                                            v-for="item in division.cityLayerFields"
+                                            :key="item.name"
+                                            :label="item.name"
+                                            :value="item.name">
+                                    </el-option>
+                                </el-select>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+                    <el-row style="margin-top: 10px">
+                        <span style="color: #409EFF;">二级行政区划</span>
+                        <el-divider content-position="left" direction="horizontal"></el-divider>
+                    </el-row>
+                    <el-row>
+                        <el-col :span="12">
+                            <el-form-item label="图层地址:" prop="streetUrl">
+                                <el-input @input="getLayerInfos($event,'street')"
+                                          ref="streetUrl"
+                                          v-model="division.importForm.streetUrl"
+                                          auto-complete="off" size="small">
+                                    <template slot="append">
+                                        <el-button @click.native="openLayerResourceDialog('street')"
+                                                type="primary"
+                                                size="mini"
+                                                class="select_button">选择</el-button>
+                                    </template>
+                                </el-input>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                            <el-form-item label="图层名称:" prop="streetName">
+                                <el-input v-model="division.importForm.streetName"
+                                        auto-complete="off" size="small" suffix-icon="xxx">
+                                </el-input>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+                    <el-row>
+                        <el-col :span="12">
+                            <el-form-item label="名称字段:">
+                                <el-select v-model="division.streetSelectedNameValue" placeholder="请选择" size="small">
+                                    <el-option
+                                            v-for="item in division.streetLayerFields"
+                                            :key="item.name"
+                                            :label="item.name"
+                                            :value="item.name">
+                                    </el-option>
+                                </el-select>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                            <el-form-item label="编码字段:">
+                                <el-select v-model="division.streetSelectedFieldValue" placeholder="请选择" size="small">
+                                    <el-option
+                                            v-for="item in division.streetLayerFields"
+                                            :key="item.name"
+                                            :label="item.name"
+                                            :value="item.name">
+                                    </el-option>
+                                </el-select>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+                    <el-row style="margin-top: 10px">
+                        <span style="color: #409EFF;">三级行政区划</span>
+                        <el-divider content-position="left" direction="horizontal"></el-divider>
+                    </el-row>
+                    <el-row>
+                        <el-col :span="12">
+                            <el-form-item label="图层地址:" prop="countryUrl">
+                                <el-input
+                                        @input="getLayerInfos($event,'country')"
+                                        ref="countryUrl"
+                                        v-model="division.importForm.countryUrl"
+                                        auto-complete="off"
+                                        size="small">
+                                    <template slot="append">
+                                        <el-button @click.native="openLayerResourceDialog('country')"
+                                                type="primary"
+                                                size="mini"
+                                                class="select_button">选择</el-button>
+                                    </template>
+                                </el-input>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                            <el-form-item label="图层名称:" prop="countryName">
+                                <el-input auto-complete="off" v-model="division.importForm.countryName"
+                                          size="small" suffix-icon="xxx">
+                                </el-input>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+                    <el-row>
+                        <el-col :span="12">
+                            <el-form-item label="名称字段:">
+                                <el-select v-model="division.countrySelectedNameValue" placeholder="请选择" size="small">
+                                    <el-option
+                                            v-for="item in division.countryLayerFields"
+                                            :key="item.name"
+                                            :label="item.name"
+                                            :value="item.name">
+                                    </el-option>
+                                </el-select>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                            <el-form-item label="编码字段:">
+                                <el-select v-model="division.countrySelectedFieldValue" placeholder="请选择" size="small">
+                                    <el-option
+                                            v-for="item in division.countryLayerFields"
+                                            :key="item.name"
+                                            :label="item.name"
+                                            :value="item.name">
+                                    </el-option>
+                                </el-select>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+
+                    <el-row style="text-align: right;margin-top: 50px;">
+                        <el-button type="primary" @click="importData" size="small">导入</el-button>
+                    </el-row>
+                </el-form>
+            </el-container>
+        </el-container>
+    </el-dialog>
+
+
+    <!--图层数据资源列表-->
+    <el-dialog
+            id="loadLayerResourceDialog"
+            :modal-append-to-body="false"
+            width="70%"
+            v-loading="division.loadLayerResourceLoading"
+            :element-loading-text="division.loadLayerResourceLoadingTip"
+            :close-on-click-modal="false"
+            :visible.sync="division.loadLayerResourceDialogVisible"
+            title="数据资源">
+        <el-container style="height: calc(100% - 60px)">
+            <el-header style="height: auto;">
+                <!--工具条-->
+                <el-col :span="24" class="toolbar" style="text-align: right;">
+                    <el-form :inline="true">
+                        <el-form-item>
+                            <el-input @input="resourceLayerSearchKeyChange"
+                                      v-model="division.resourceLayersSearch" placeholder="输入关键字查询" size="medium">
+                                <i class="el-icon-search el-input__icon" v-if="division.resourceLayersSearch === ''" slot="suffix"
+                                   style="font-weight: bold"></i>
+                                <i class="el-icon-close el-input__icon"  v-if="division.resourceLayersSearch !== ''"
+                                   slot="suffix"
+                                   @click="clearResourceLayerSearch"
+                                   style="font-weight: bold"></i>
+                            </el-input>
+                        </el-form-item>
+                        <el-form-item>
+                            <el-button type="primary" @click="improtResourceLayer" size="small">导入图层</el-button>
+                        </el-form-item>
+                    </el-form>
+                </el-col>
+            </el-header>
+            <el-main style="height: calc(100% - 60px)">
+                <el-table :data="division.resourceLayers"
+                          sortable="true" style="width: 100%"
+                          :height="350"
+                          :header-cell-style="{background:'#eef1f6',color:'#606266',height:'40px'}"
+                          header-align="center"
+                          row-key="id"
+                          ref="resourceLayerTable"
+                          show-overflow-tooltip="true">
+                    <el-table-column type="selection" width="50"></el-table-column>
+                    <el-table-column prop="name" label="图层名称"></el-table-column>
+                    <el-table-column prop="layerTable" label="图层表名"></el-table-column>
+                    <el-table-column prop="layerTypeCn" label="图层类型"></el-table-column>
+                    <el-table-column prop="dirPath" label="所在目录"></el-table-column>
+                </el-table>
+            </el-main>
+        </el-container>
+        <span slot="footer" class="dialog-footer">
+            <el-row>
+                <el-pagination
+                        background
+                        layout="total, sizes, prev, pager, next, jumper"
+                        @current-change="handleResourceLayersPageChange"
+                        :page-size="division.resourceLayersRows"
+                        :current-page="division.resourceLayersCurrentPage"
+                        :page-count="Math.ceil(division.resourceLayersTotal / division.resourceLayersRows)"
+                        :total="division.resourceLayersTotal"
+                        style="float:right;margin-right: 20px;">
+            </el-pagination>
+            </el-row>
+        </span>
+    </el-dialog>
+
+
+
+</div>
+
+<script th:src="@{/agsupport/map/js/lib/vue-v2.5.22.js}"></script>
+<script th:src="@{/agsupport/map/js/lib/jquery-2.2.4.min.js}"></script>
+<script th:src="@{/agsupport/map/js/lib/element.ui-v2.10.1.js}"></script>
+<script th:src="@{/agsupport/map/division/division.js}"></script>
+<script th:src="@{/agsupport/map/js/interact/interact.min-v1.6.2.js}"></script>
+<script th:src="@{/agsupport/map/js/interact/common.js}"></script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>合规性检测图层配置</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <link rel="stylesheet" th:href="@{/agsupport/map/css/lib/element.ui-v2.10.1.css}">
+    <link rel="stylesheet" th:href="@{/agsupport/map/complianceCheck/css/complianceCheck.css}">
+    <script>
+        var ctx = '[[@{/}]]';
+    </script>
+</head>
+<body>
+
+<div id="app" v-cloak>
+    <!--标题-->
+    <el-col :span="24" class="toolbar"
+            v-if="complianceCheck.titleVisible"
+            style="padding: 0px 15px;margin-bottom: 0px;background: #f2f2f2;font-size: 14px;">
+        <el-form :inline="true">
+            <el-form-item>
+                <el-divider direction="vertical"></el-divider>
+                <strong>合规检测图层配置</strong>
+            </el-form-item>
+        </el-form>
+    </el-col>
+
+    <!--工具条-->
+    <el-col :span="24" class="toolbar"
+            v-if="complianceCheck.toolVisible"
+            style="padding: 8px 15px;margin-bottom: 0px;background: #f2f2f2;margin: 10px 0px;">
+        <el-form :inline="true">
+            <el-form-item>
+                <el-input v-model="complianceCheck.layerNameSearch" placeholder="输入图层名查询" size="small"></el-input>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" size="small" @click="getComplianceCheckLayers">查询</el-button>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" size="small" @click="importLayerView">图层导入</el-button>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" size="small" @click="addLayerView">新增</el-button>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" size="small" @click="saveEditLayer">保存</el-button>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="danger" size="small" @click="deleteLayer">删除</el-button>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" size="small" @click="layerProjectView">项目类型关联</el-button>
+            </el-form-item>
+        </el-form>
+    </el-col>
+
+    <!--检测图层列表-->
+    <el-table :data="complianceCheck.layers"
+              border sortable="true" :header-cell-style="{background:'#eef1f6',color:'#606266'}" style="width: 100%"
+              v-if="complianceCheck.layerViewVisible"
+              ref="layersTable"
+              @selection-change="onTableRowSelectionChange">
+        <el-table-column
+                type="selection"
+                width="40">
+        </el-table-column>
+        <el-table-column prop="seq" label="序号" width="80">
+            <template slot-scope="scope">
+                <el-input v-model="scope.row.seq" auto-complete="off"></el-input>
+            </template>
+        </el-table-column>
+        <el-table-column label="图层类型:"  width="200">
+            <template slot-scope="scope">
+                <el-select v-model="scope.row.layerType"
+                           size="small" placeholder="请选择">
+                    <el-option
+                            v-for="item in complianceCheck.layerTypes"
+                            :key="item.code"
+                            :label="item.name"
+                            :value="item.code">
+                    </el-option>
+                </el-select>
+            </template>
+        </el-table-column>
+        <el-table-column prop="layerName" label="图层名" width="180">
+            <template slot-scope="scope">
+                <el-input v-model="scope.row.layerName" auto-complete="off"></el-input>
+            </template>
+        </el-table-column>
+        <el-table-column prop="layerUrl" label="图层服务地址">
+            <template slot-scope="scope">
+                <el-input v-model="scope.row.layerUrl" auto-complete="off"></el-input>
+            </template>
+        </el-table-column>
+        <el-table-column prop="typeField" label="类型判断字段" width="140">
+            <template slot-scope="scope">
+                <el-select v-model="scope.row.typeField"
+                           size="small" placeholder="请选择" @focus="setFieldsBylayerUrl(scope.row)">
+                    <el-option
+                            v-for="item in complianceCheck.layerFields"
+                            :key="item.name"
+                            :label="item.name === item.alias ? item.alias : item.name + '(' + item.alias + ')'"
+                            :value="item.name">
+                    </el-option>
+                </el-select>
+            </template>
+        </el-table-column>
+        <el-table-column prop="showField" label="前端显示字段" width="140">
+            <template slot-scope="scope">
+                <el-select v-model="scope.row.showField"
+                           size="small" placeholder="请选择" @focus="setFieldsBylayerUrl(scope.row)">
+                    <el-option
+                            v-for="item in complianceCheck.layerFields"
+                            :key="item.name"
+                            :label="item.name === item.alias ? item.alias : item.name + '(' + item.alias + ')'"
+                            :value="item.name">
+                    </el-option>
+                </el-select>
+            </template>
+        </el-table-column>
+        <el-table-column prop="remark" label="图层标识" width="160">
+            <template slot-scope="scope">
+                <el-select v-model="scope.row.remark" size="small"
+                           style="width: 100%;" placeholder="请选择">
+                    <el-option
+                            v-for="item in complianceCheck.remarks"
+                            :key="item.value"
+                            :label="item.label"
+                            :value="item.value">
+                    </el-option>
+                </el-select>
+            </template>
+        </el-table-column>
+        <el-table-column prop="status" label="是否启用" width="80">
+            <template slot-scope="scope">
+                <el-select v-model="scope.row.status" size="small" placeholder="请选择">
+                    <el-option
+                            v-for="item in complianceCheck.booleanDatas"
+                            :key="item.value"
+                            :label="item.name"
+                            :value="item.value">
+                    </el-option>
+                </el-select>
+            </template>
+        </el-table-column>
+        <el-table-column prop="screenshot" label="是否截图" width="80">
+            <template slot-scope="scope">
+                <el-select v-model="scope.row.screenshot" size="small" placeholder="请选择">
+                    <el-option
+                            v-for="item in complianceCheck.booleanDatas"
+                            :key="item.value"
+                            :label="item.name"
+                            :value="item.value">
+                    </el-option>
+                </el-select>
+            </template>
+        </el-table-column>
+    </el-table>
+
+    <!-- 添加图层 弹窗 start -->
+    <el-dialog title="添加图层" :visible.sync="layerDialogVisible" class="add-dialog">
+        <div class="dialog-pop">
+            <el-input placeholder="搜索" v-model="layerKeyword" clearable
+                      @input="layerTableCurrentPage = 1;layerShowTable()"
+                      style="width:200px;float:right;margin-bottom: 10px;"></el-input>
+            <el-table :data="layerTableData" v-loading="layerLoading" border style="width: 100%;" height="300px"
+                      @selection-change="layerHandleSelectionChange" @row-click="layerHandleRowSelection"
+                      ref="layerRowSelection">
+                <el-table-column type="selection" width="50"></el-table-column>
+                <el-table-column prop="name" label="图层名称"></el-table-column>
+                <el-table-column prop="layerTable" label="图层表名"></el-table-column>
+                <el-table-column prop="layerTypeCn" label="图层类型"></el-table-column>
+                <el-table-column prop="dirPath" label="所在目录"></el-table-column>
+            </el-table>
+            <el-pagination
+                    background
+                    align="right"
+                    :pager-count="4"
+                    @size-change="layerHandleSizeChange"
+                    @current-change="layerHandleCurrentChange"
+                    :page-sizes="[10, 20, 30, 50]"
+                    :page-size="layerTablePageSize"
+                    :current-page="layerTableCurrentPage"
+                    layout="total,sizes, prev, pager, next, jumper"
+                    :total="layerTableTotal" style="padding-top: 10px;">
+            </el-pagination>
+        </div>
+        <div slot="footer" class="dialog-footer">
+            <el-button size="small" @click.native="layerDialogVisible = false">取消</el-button>
+            <el-button size="small" type="primary" @click.native="selLayers()">导入</el-button>
+        </div>
+    </el-dialog>
+    <!-- 添加图层 弹窗 end -->
+
+    <!--项目关联界面-->
+    <el-dialog
+            id="projectView"
+            title="项目类型关联"
+            :close-on-click-modal="false"
+            :visible.sync="complianceCheck.editLayerProjectViewVisible">
+        <el-col :span="24" class="toolbar"
+                style="padding: 8px;margin-bottom: 0px;margin: 10px 0px;">
+            <el-form :inline="true">
+                <el-form-item label="国标行业分类:">
+                    <el-select @change="projectSelectChange" size="small" v-model="complianceCheck.projectSelectValue"
+                               placeholder="请选择">
+                        <el-option
+                                v-for="item in complianceCheck.projectDatas"
+                                :key="item.value"
+                                :label="item.name"
+                                :value="item.value">
+                        </el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item>
+                    <el-button size="small" type="primary" @click.native="saveLayerProject()">保存</el-button>
+                </el-form-item>
+                <el-form-item>
+                    <el-button size="small" type="primary" @click.native="getProjectLayers()">刷新</el-button>
+                </el-form-item>
+            </el-form>
+        </el-col>
+        <div class="div-tree">
+            <div class="tree-element">
+                <el-tree :data="complianceCheck.currTreeData" :props="complianceCheck.treeProps" show-checkbox
+                         node-key="code"
+                         ref="tree"
+                         :default-checked-keys="complianceCheck.currTreechecked"
+                         :default-expanded-keys="complianceCheck.currTreechecked"
+                         @check-change="treeCheckChange">
+                </el-tree>
+            </div>
+            <el-row style="text-align: right;padding-top: 10px;">
+                <el-button size="small" type="primary" @click.native="operTreeDiv('sel')">确定</el-button>
+                <el-button size="small" type="primary" @click.native="operTreeDiv()">取消</el-button>
+            </el-row>
+        </div>
+        <!--项目与类型关联配置列表-->
+        <el-table :data="complianceCheck.projectLayers"
+                  border sortable="true" :header-cell-style="{background:'#eef1f6',color:'#606266'}"
+                  style="width: 100%;">
+            <el-table-column prop="layerName" label="图层名" width="180">
+            </el-table-column>
+            <el-table-column prop="regulation" label="是否允许相交" width="120">
+                <template slot-scope="scope">
+                    <el-select v-model="scope.row.regulation" size="small" placeholder="请选择">
+                        <el-option
+                                v-for="item in complianceCheck.booleanDatas"
+                                :key="item.value"
+                                :label="item.label"
+                                :value="item.value">
+                        </el-option>
+                    </el-select>
+                </template>
+            </el-table-column>
+            <el-table-column prop="rangeCn" label="类型范围">
+                <template slot-scope="scope">
+                    <el-input v-model="scope.row.rangeCn" @focus="rangeSelectFocus(scope.row)" v-show="scope.row.remark == 'LayerName_TG' || scope.row.remark == 'LayerName_KG'"></el-input>
+                </template>
+            </el-table-column>
+            <el-table-column prop="status" label="是否启用" width="80">
+                <template slot-scope="scope">
+                    <el-select v-model="scope.row.status" size="small" placeholder="请选择">
+                        <el-option
+                                v-for="item in complianceCheck.booleanDatas"
+                                :key="item.value"
+                                :label="item.name"
+                                :value="item.value">
+                        </el-option>
+                    </el-select>
+                </template>
+            </el-table-column>
+            <el-table-column prop="screenshot" label="是否截图" width="80">
+                <template slot-scope="scope">
+                    <el-select v-model="scope.row.screenshot" size="small" placeholder="请选择">
+                        <el-option
+                                v-for="item in complianceCheck.booleanDatas"
+                                :key="item.value"
+                                :label="item.name"
+                                :value="item.value">
+                        </el-option>
+                    </el-select>
+                </template>
+            </el-table-column>
+        </el-table>
+    </el-dialog>
+</div>
+
+<script th:src="@{/agsupport/map/js/lib/vue-v2.5.22.js}"></script>
+<script th:src="@{/agsupport/map/js/lib/jquery-2.2.4.min.js}"></script>
+<script th:src="@{/agsupport/map/js/lib/element.ui-v2.10.1.js}"></script>
+<script th:src="@{/agsupport/map/complianceCheck/js/complianceCheck.js}"></script>
+<script th:src="@{/agsupport/map/js/interact/interact.min-v1.6.2.js}"></script>
+<script th:src="@{/agsupport/map/js/interact/common.js}"></script>
+</body>
+</html>

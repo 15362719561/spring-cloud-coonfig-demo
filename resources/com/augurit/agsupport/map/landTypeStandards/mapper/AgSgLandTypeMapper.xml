@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.augurit.agsupport.map.landTypeStandards.mapper.AgSgLandTypeMapper">
+
+    <sql id="allColumns">
+        ID id,
+        PARENT_ID parentId,
+        VERSION_CODE versionCode,
+        TYPE type,
+        NAME name,
+        CODE code,
+        COLOR color,
+        LINE_COLOR lineColor,
+        CODE_SORT codeSort,
+        IS_DEFAULT isDefault,
+        ROW_KEY rowKey
+    </sql>
+
+    <!--查询所有用地分类-->
+    <select id="findAllList" resultType="AgSgLandType">
+        SELECT
+        <include refid="allColumns"/>
+        FROM ag_sg_land_type
+        WHERE
+        1 = 1
+        <if test="versionCode != null">
+            AND VERSION_CODE = #{versionCode}
+        </if>
+        <if test="type != null">
+            AND TYPE = #{type}
+        </if>
+        <if test="name != null">
+            AND NAME = #{name}
+        </if>
+        <if test="code != null">
+            AND CODE = #{code}
+        </if>
+        <if test="parentId != null">
+            AND PARENT_ID = #{parentId}
+        </if>
+        <if test="color !=null">
+            AND COLOR = #{color}
+        </if>
+        <if test="lineColor !=null">
+            AND LINE_COLOR = #{lineColor}
+        </if>
+        <if test="codeSort !=null">
+            AND CODE_SORT = #{codeSort}
+        </if>
+        <if test="isDefault !=null">
+            AND IS_DEFAULT = #{isDefault}
+        </if>
+        ORDER BY ID DESC
+    </select>
+
+    <!--通过名称获取用地分类标准信息-->
+    <select id="getInfoByName" resultType="AgSgLandType">
+        SELECT
+        <include refid="allColumns"/>
+        FROM ag_sg_land_type
+        WHERE
+        NAME = #{name}
+    </select>
+
+    <!--按类别、版本和层级查找-->
+    <select id="getTargetLandTypes" resultType="AgSgLandType">
+        SELECT
+        <include refid="allColumns"/>
+        FROM ag_sg_land_type
+        WHERE 1=1
+        <if test="versionCode != null">
+            AND VERSION_CODE = #{versionCode}
+        </if>
+        <if test="type != null">
+            AND TYPE = #{type}
+        </if>
+        <if test="codeSort != null">
+            AND CODE_SORT = #{codeSort}
+        </if>
+        <choose>
+            <when test="codeSort != null">
+                AND CODE_SORT = #{codeSort}
+            </when>
+            <otherwise>
+                AND CODE_SORT <![CDATA[ > ]]> 1
+            </otherwise>
+        </choose>
+        <if test="isDefault != null">
+            AND IS_DEFAULT = #{isDefault}
+        </if>
+    </select>
+
+    <!--根据id查找-->
+    <select id="findById" resultType="AgSgLandType">
+        SELECT
+        <include refid="allColumns"/>
+        FROM ag_sg_land_type
+        WHERE
+        ID = #{id}
+    </select>
+
+    <!--根据code查找-->
+    <select id="findByCodeAndVersion" resultType="AgSgLandType">
+        SELECT
+        <include refid="allColumns"/>
+        FROM ag_sg_land_type
+        WHERE
+        CODE = #{code}
+        <if test="id != null">
+            and ID != #{id}
+        </if>
+        <if test="versionCode != null">
+            and VERSION_CODE = #{versionCode}
+        </if>
+    </select>
+
+    <!--保存-->
+    <insert id="save">
+        INSERT
+        INTO ag_sg_land_type (
+        ID,PARENT_ID,VERSION_CODE,TYPE,NAME,CODE,COLOR,LINE_COLOR,CODE_SORT,IS_DEFAULT,ROW_KEY
+        ) VALUES (
+        #{id},#{parentId},#{versionCode},#{type},#{name},#{code},#{color},#{lineColor},#{codeSort},#{isDefault},#{rowKey}
+        )
+    </insert>
+
+    <!--修改-->
+    <update id="update">
+        UPDATE ag_sg_land_type
+        <set>
+            <if test="versionCode != null">
+                VERSION_CODE = #{versionCode},
+            </if>
+            <if test="type != null">
+                TYPE = #{type},
+            </if>
+            <if test="name != null">
+                NAME = #{name},
+            </if>
+            <if test="code != null">
+                CODE = #{code},
+            </if>
+            <if test="parentId != null">
+                PARENT_ID = #{parentId},
+            </if>
+            <if test="color !=null">
+                COLOR = #{color},
+            </if>
+            <if test="lineColor !=null">
+                LINE_COLOR = #{lineColor},
+            </if>
+            <if test="codeSort !=null">
+                CODE_SORT = #{codeSort},
+            </if>
+            <if test="isDefault !=null">
+                IS_DEFAULT = #{isDefault},
+            </if>
+            <if test="rowKey !=null">
+                ROW_KEY = #{rowKey}
+            </if>
+        </set>
+        WHERE
+        ID = #{id}
+    </update>
+    <!--删除-->
+    <delete id="deleteById">
+        DELETE
+        FROM
+        ag_sg_land_type
+        WHERE
+        ID = #{id}
+    </delete>
+    <!--批量删除-->
+    <delete id="deleteBatch">
+        DELETE
+        FROM
+        ag_sg_land_type
+        WHERE ID IN
+        <foreach collection="ids" item="item" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </delete>
+
+    <!--切换默认版本-->
+    <update id="toggleDefaultLandVersion">
+        UPDATE ag_sg_land_type
+        <set>
+            IS_DEFAULT = 0
+        </set>
+        WHERE 1=1
+        <if test="type != null">
+            and TYPE = #{type};
+        </if>
+
+        UPDATE ag_sg_land_type
+        <set>
+            IS_DEFAULT = #{isDefault}
+        </set>
+        WHERE 1=1
+        <if test="versionCode != null">
+            and VERSION_CODE = #{versionCode}
+        </if>
+        <if test="type != null">
+            and TYPE = #{type};
+        </if>
+    </update>
+
+    <!--获取所有类型-->
+    <select id="getAllTypes" resultType="String">
+        SELECT DISTINCT TYPE FROM ag_sg_land_type where TYPE <![CDATA[ <> ]]> ''
+    </select>
+
+    <!--获取类型下所有版本-->
+    <select id="getVersionsByType" resultType="String">
+        SELECT DISTINCT VERSION_CODE FROM ag_sg_land_type where VERSION_CODE <![CDATA[ <> ]]> ''
+        <if test="type != null">
+            and TYPE = #{type}
+        </if>
+    </select>
+</mapper>

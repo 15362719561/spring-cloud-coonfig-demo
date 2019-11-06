@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.augurit.agsupport.map.conflictCheck.mapper.AeaMapConflictCheckMapper">
+
+    <!-- 冲突检测图层信息配置表 -->
+    <sql id="aeaMapConflictCheckColumns">
+        id id,
+        layer_name layerName,
+        layer_alias_name layerAliasName,
+        layer_url layerUrl,
+        type_field typeField,
+        name_field nameField,
+        remark remark,
+        seq seq,
+        layer_type layerType
+    </sql>
+
+    <!-- 冲突检测图层关联用地类型标准配置表 -->
+    <sql id="aeaMapConflictCheckLandTypeColumns">
+        id id,
+        land_name landName,
+        land_code landCode,
+        construct construct,
+        layer_type layerType
+    </sql>
+
+    <!--获取冲突检测图层配置信息-->
+    <select id="getConflictCheckLayers" resultType="com.augurit.agsupport.map.conflictCheck.domain.AeaMapConflictCheck">
+        select
+          <include refid="aeaMapConflictCheckColumns"/>
+        from
+          aea_map_conflict_check
+        order by seq asc
+    </select>
+
+    <!--按条件查询冲突检测图层配置-->
+    <select id="findConflictCheckLayerList" resultType="com.augurit.agsupport.map.conflictCheck.domain.AeaMapConflictCheck">
+        select
+         <include refid="aeaMapConflictCheckColumns"/>
+        from
+          aea_map_conflict_check
+        where
+          1 = 1
+        <if test="layerName != null">
+            and layer_name like CONCAT(CONCAT('%', TRIM(#{layerName})), '%')
+        </if>
+        order by seq asc
+    </select>
+
+    <!--新增冲突检测图层配置-->
+    <insert id="saveConflictCheckLayer">
+        insert into aea_map_conflict_check(id,layer_name,layer_alias_name,layer_url,type_field,name_field,remark,seq,layer_type)
+          values
+        (#{id},#{layerName},#{layerAliasName},#{layerUrl},#{typeField},#{nameField},#{remark},#{seq},#{layerType})
+    </insert>
+
+    <!--更新冲突检测图层配置-->
+    <update id="updateConflictCheckLayer">
+        update aea_map_conflict_check
+        <set>
+            <if test="layerName != null">
+                layer_name = #{layerName},
+            </if>
+            <if test="layerAliasName != null">
+                layer_alias_name = #{layerAliasName},
+            </if>
+            <if test="layerUrl != null">
+                layer_url = #{layerUrl},
+            </if>
+            <if test="typeField != null">
+                type_field = #{typeField},
+            </if>
+            <if test="nameField != null">
+                name_field = #{nameField},
+            </if>
+            <if test="remark != null">
+                remark = #{remark},
+            </if>
+            <if test="seq != null">
+                seq = #{seq},
+            </if>
+            <if test="layerType != null">
+                layer_type = #{layerType}
+            </if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <!--删除冲突检测图层配置-->
+    <delete id="deleteConflictCheckLayer">
+      delete
+      from
+        aea_map_conflict_check
+      where id = #{id}
+    </delete>
+
+    <!--批量删除冲突检测图层配置-->
+    <delete id="deleteBatchConflictCheckLayer">
+        delete
+        from
+        aea_map_conflict_check
+        where id in
+        <foreach collection="array" index="index" item="item" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </delete>
+
+    <!-- 添加用地性质到指定图层 -->
+    <insert id="saveConflictCheckLandType">
+         insert into aea_map_conflict_land_type(id,land_name,land_code,construct,layer_type)
+          values
+        (#{id},#{landName},#{landCode},#{construct},#{layerType})
+    </insert>
+
+    <update id="updateConflictCheckLandType">
+        update aea_map_conflict_land_type
+        <set>
+            <if test="landCode != null">
+                land_code = #{landCode},
+            </if>
+            <if test="landName != null">
+                land_name = #{landName},
+            </if>
+            <if test="construct != null">
+                construct = #{construct},
+            </if>
+            <if test="layerType != null">
+                layer_type = #{layerType}
+            </if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <!-- 根据冲突检测图层类型和用地类型获取用地性质配置 -->
+    <select id="findConflictCheckLandType" resultType="com.augurit.agsupport.map.conflictCheck.domain.AeaMapConflictCheckLandType">
+        select
+        <include refid="aeaMapConflictCheckLandTypeColumns"/>
+        from
+        aea_map_conflict_land_type
+        <where>
+            <if test="layerType != null">
+                and layer_type = #{layerType}
+            </if>
+            <if test="construct != null">
+                and construct = #{construct}
+            </if>
+            <if test="landName != null">
+                and (land_name like CONCAT(CONCAT('%', TRIM(#{landName})), '%') or land_code like CONCAT(CONCAT('%', TRIM(#{landName})), '%'))
+            </if>
+            <if test="landCode != null">
+                and land_code like CONCAT(CONCAT('%', TRIM(#{landCode})), '%')
+            </if>
+        </where>
+        order by land_code asc
+    </select>
+
+    <!-- 批量删除指定图层的用地类型配置 -->
+    <delete id="deleteBatchConflictCheckLandType">
+        delete
+        from
+        aea_map_conflict_land_type
+        where id in
+        <foreach collection="array" index="index" item="item" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </delete>
+
+    <update id="updateBatchConflictCheckLandType" parameterType="java.util.List">
+        <if test="_databaseId == 'oracle'">
+            BEGIN
+        </if>
+        <foreach collection="list" item="item" index="index" separator=";">
+            UPDATE aea_map_conflict_land_type
+            <set>
+                <if test="item.landName != null">
+                    land_name = #{item.landName},
+                </if>
+                <if test="item.landCode != null">
+                    land_code = #{item.landCode},
+                </if>
+                <if test="item.construct != null">
+                    construct = #{item.construct}
+                </if>
+            </set>
+            WHERE
+            id = #{item.id}
+        </foreach>
+        <if test="_databaseId == 'oracle'">
+            ;END;
+        </if>
+    </update>
+
+    <insert id="addBatchConflictCheckLandType" parameterType="java.util.List">
+        INSERT INTO aea_map_conflict_land_type(id,land_name,land_code,construct,layer_type)
+          VALUES
+        <foreach collection="list" item="landType" separator=",">
+            (#{landType.id},#{landType.landName},#{landType.landCode},#{landType.construct},#{landType.layerType})
+        </foreach>
+    </insert>
+
+
+
+</mapper>

@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.augurit.agsupport.map.siteFactor.mapper.AeaMapSiteFactorMapper">
+    <sql id="allColumns">
+        ID id,
+        PARENT_ID parentId,
+        NAME as name,
+        ALIAS alias,
+        URL url,
+        REMARK remark,
+        TYPE_FIELD typeField,
+        AREA_FIELD areaField,
+        TYPE_FIELD_CN typeFieldCn,
+        AREA_FIELD_CN areaFieldCn,
+        MAJOR major,
+        SEQ seq,
+        TYPE type,
+        SOURCE source,
+        LAYER_TYPE layerTYpe,
+        IS_DATA_LAYER isDataLayer
+    </sql>
+    <select id="getAll" resultType="com.augurit.agsupport.map.siteFactor.domain.AeaMapSiteFactor">
+        SELECT
+        <include refid="allColumns"/>
+        FROM
+        aea_map_site_factor ORDER BY seq
+    </select>
+
+    <insert id="save">
+      insert into aea_map_site_factor(id, parent_id, name, alias, url, remark, type_field, area_field, type_field_cn, area_field_cn,major,seq,type,source,layer_type,is_data_layer) values
+      (#{id},#{parentId},#{name},#{alias},#{url},#{remark},#{typeField},#{areaField},#{typeFieldCn},#{areaFieldCn},#{major},#{seq},#{type},#{source},#{layerType},#{isDataLayer})
+    </insert>
+
+    <update id="update">
+        UPDATE aea_map_site_factor
+        <set>
+            <if test="parentId != null">
+                PARENT_ID = #{parentId},
+            </if>
+            <if test="alias != null">
+                ALIAS = #{alias},
+            </if>
+            <if test="url != null">
+                URL = #{url},
+            </if>
+            <if test="remark != null">
+                REMARK = #{remark},
+            </if>
+            <if test="typeField != null">
+                TYPE_FIELD = #{typeField},
+            </if>
+            <if test="areaField != null">
+                AREA_FIELD = #{areaField},
+            </if>
+            <if test="typeFieldCn != null">
+                TYPE_FIELD_CN = #{typeFieldCn},
+            </if>
+            <if test="areaFieldCn != null">
+                AREA_FIELD_CN = #{areaFieldCn},
+            </if>
+            <if test="major != null">
+                major = #{major},
+            </if>
+            <if test="seq != null">
+                seq = #{seq},
+            </if>
+            <if test="type != null">
+                type = #{type},
+            </if>
+            <if test="source != null">
+                source = #{source},
+            </if>
+            <if test="layerType != null">
+                layer_type = #{layerType},
+            </if>
+            <if test="isDataLayer != null">
+                is_data_layer = #{isDataLayer},
+            </if>
+            <if test="name != null">
+                NAME = #{name}
+            </if>
+        </set>
+        WHERE
+        id = #{id}
+    </update>
+
+    <!--批量删除-->
+    <delete id="deleteBatch">
+        DELETE
+        FROM
+        aea_map_site_factor
+        WHERE id IN
+        <foreach collection="ids" item="item" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </delete>
+
+    <insert id="saveLayers">
+        insert into aea_map_site_factor(id, parent_id, name, alias, url, remark, type_field, area_field, type_field_cn,
+        area_field_cn,type,source,layer_type)
+          VALUES
+        <foreach collection="layers" item="item" separator="," >
+            (#{item.id},#{item.parentId},#{item.name},#{item.alias},#{item.url},#{item.remark},#{item.typeField},#{item.areaField},
+            #{item.typeFieldCn}, #{item.areaFieldCn}, #{item.type}, #{item.source},#{item.layerType})
+        </foreach>
+    </insert>
+
+    <insert id="saveByLayerIds">
+        insert into aea_map_site_factor(id, parent_id, name, alias, url, remark, type_field, area_field, type_field_cn,
+        area_field_cn,type,source) select
+        UUID(),#{parentId},a.name_cn,'',CONCAT(CONCAT(a.url,'/'),a.layer_table),'','','','','',0,a.id
+        from ag_layer a
+        where
+        a.id IN
+        <foreach collection="layerIds" item="item" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </insert>
+
+    <insert id="saveLeafletByLayerIds">
+        insert into aea_map_site_factor(id, parent_id, name, alias, url, remark, type_field, area_field, type_field_cn,
+        area_field_cn,type,source) select
+        UUID(),#{parentId},a.name_cn,'',CONCAT(CONCAT(a.url,'?typeName='),a.layer_table),'','','','','',0,a.id
+        from ag_layer a
+        where
+        a.id IN
+        <foreach collection="layerIds" item="item" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </insert>
+</mapper>

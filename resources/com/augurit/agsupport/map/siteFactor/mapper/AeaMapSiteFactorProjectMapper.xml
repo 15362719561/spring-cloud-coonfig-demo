@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.augurit.agsupport.map.siteFactor.mapper.AeaMapSiteFactorProjectMapper">
+
+    <select id="getAllByProjectCode" resultType="com.augurit.agsupport.map.siteFactor.domain.AeaMapSiteFactorProject">
+        select a.id,
+               case when a.factor_id is null then b.id else a.factor_id end factorId,
+               a.project_name projectName,
+               a.project_code projectCode,
+               case when b.major is null then 2 else b.major end major,
+               case when a.effect is null then 1 else a.effect end effect,
+               case when a.allow_intersect is null then 1 else a.allow_intersect end allowIntersect,
+               a.weight,
+               a.range_value rangeValue,
+               a.remark,
+               a.type_where typeWhere,
+               b.url,
+               b.parent_id parentId,
+               b.name,
+               b.type_field typeField,
+               b.area_field areaField,
+               b.seq,
+               b.type,
+               b.layer_type layerType,
+               b.is_data_layer isDataLayer
+          from aea_map_site_factor b left join aea_map_site_factor_project a
+          on a.factor_id = b.id and a.project_code = #{projectCode} ORDER BY b.seq
+    </select>
+
+    <insert id="save">
+        INSERT INTO aea_map_site_factor_project(id,factor_id,project_name,project_code,effect,weight,range_value,remark,type_where,allow_intersect)
+        VALUES (#{id},#{factorId},#{projectName},#{projectCode},#{effect},#{weight},#{rangeValue},#{remark},#{typeWhere},#{allowIntersect})
+    </insert>
+    <update id="update">
+        UPDATE aea_map_site_factor_project
+        <set>
+            <if test="typeWhere != null">
+                type_where = #{typeWhere},
+            </if>
+            <if test="remark != null">
+                remark = #{remark},
+            </if>
+            <if test="rangeValue != null and rangeValue != ''">
+                range_value = #{rangeValue},
+            </if>
+            <if test="weight != null">
+                weight = #{weight},
+            </if>
+            <if test="effect != null">
+                effect = #{effect},
+            </if>
+            <if test="projectCode != null">
+                project_code = #{projectCode},
+            </if>
+            <if test="projectName != null">
+                project_name = #{projectName},
+            </if>
+            <if test="allowIntersect != null">
+                allow_intersect = #{allowIntersect},
+            </if>
+            <if test="factorId != null">
+                factor_id = #{factorId}
+            </if>
+        </set>
+        WHERE
+        id = #{id}
+    </update>
+</mapper>

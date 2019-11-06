@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+		PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+	<properties>
+		<property name="_defaultDatabaseId" value="mysql"/><!--使用的数据库类型-->
+	</properties>
+	<settings>
+		<!-- xml配置对于NULL值默认作为字符串来处理 -->
+		<setting name="jdbcTypeForNull" value="VARCHAR"/>
+		<setting name="logImpl" value="LOG4J"/>
+		<setting name="lazyLoadingEnabled" value="false" />
+	</settings>
+	<typeAliases>
+		<package name="com.augurit.agcloud.bsc.domain"/>
+		<package name="com.augurit.agcloud.opus.common.domain"/>
+		<package name="com.augurit.agcloud.meta.domain"/>
+		<package name="com.augurit.agcloud.bpm.common.domain"/>
+		<package name="com.augurit.agcloud.agx.common.domain"/>
+		<package name="com.augurit.agcloud.aoa.domain"/>
+		<package name="org.flowable.app.domain.editor"/>
+		<package name="com.augurit.agcloud.agcom.agsupport.domain"/>
+		<package name="com.augurit.agsupport.map.conflictCheck.domain"/>
+		<package name="com.augurit.agsupport.map.landTypeStandards.domain"/>
+		<package name="com.augurit.agsupport.map.division.domain"/>
+	</typeAliases>
+	<plugins>
+		<plugin interceptor="com.github.pagehelper.PageInterceptor">
+			<!--<property name="dialect" value="mysql"/> -->
+			<property name="offsetAsPageNum" value="true"/>
+			<property name="rowBoundsWithCount" value="true"/>
+		</plugin>
+	</plugins>
+
+	<mappers>
+		<!-- 集成flowable-modeler 扫描对应的mappsers xml -->
+		<mapper resource="org/flowable/app/repository/editor/Model.xml"/>
+		<mapper resource="org/flowable/app/repository/editor/ModelRelation.xml"/>
+		<mapper resource="org/flowable/app/repository/editor/ModelHistory.xml"/>
+	</mappers>
+
+</configuration>

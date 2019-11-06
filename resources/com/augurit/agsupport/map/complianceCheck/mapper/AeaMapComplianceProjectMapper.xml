@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.augurit.agsupport.map.complianceCheck.mapper.AeaMapComplianceProjectMapper">
+    <sql id="allColumns">
+        ID id,
+        ITEM_CODE itemCode,
+        ITEM_NAME itemName,
+        CHECK_ID checkId,
+        REGULATION regulation,
+        STATUS status,
+        SCREENSHOT screenshot,
+        range_code rangeCode,
+        RANGE_CN rangeCn,
+        REMARK remark
+    </sql>
+
+    <select id="getAllByItemCode" resultType="com.augurit.agsupport.map.complianceCheck.domain.AeaMapComplianceProject">
+        select a.id checkId,
+               a.layer_name layerName,
+               a.layer_type layerType,
+               a.layer_where layerWhere,
+               a.layer_url layerUrl,
+               a.show_field showField,
+               a.type_field typeField,
+               a.remark remark,
+               b.id id,
+               b.item_code itemCode,
+               b.item_name itemName,
+               case when b.regulation is null then a.regulation else b.regulation end regulation,
+               case when b.status is null then a.status else b.status end status,
+               case when b.screenshot is null then a.screenshot else b.status end screenshot,
+               b.range_code rangeCode,
+               b.range_cn rangeCn
+          from aea_map_compliance_check a left join aea_map_compliance_project b
+         on a.id = b.check_id
+           and b.item_code = #{itemCode} order by a.seq
+    </select>
+
+    <select id="getAllByItemCodeAndStatus" resultType="com.augurit.agsupport.map.complianceCheck.domain.AeaMapComplianceProject">
+        select a.id checkId,
+        a.layer_name layerName,
+        a.layer_type layerType,
+        a.layer_where layerWhere,
+        a.layer_url layerUrl,
+        a.show_field showField,
+        a.type_field typeField,
+        a.remark remark,
+        b.id id,
+        b.item_code itemCode,
+        b.item_name itemName,
+        case when b.regulation is null then a.regulation else b.regulation end regulation,
+        case when b.status is null then a.status else b.status end status,
+        case when b.screenshot is null then a.screenshot else b.status end screenshot,
+        b.range_code rangeCode,
+        b.range_cn rangeCn
+        from aea_map_compliance_check a left join aea_map_compliance_project b
+        on a.id = b.check_id
+        and b.item_code = #{itemCode}
+        where case when b.status is null then a.status else b.status end = #{status} order by a.seq
+    </select>
+
+    <insert id="save">
+        insert into aea_map_compliance_project(id, item_code, item_name, check_id, regulation, status, screenshot, range_code, range_cn) values
+        (#{id},#{itemCode},#{itemName},#{checkId},#{regulation},#{status},#{screenshot},#{rangeCode},#{rangeCn})
+    </insert>
+
+    <update id="update">
+        UPDATE aea_map_compliance_project
+        <set>
+            <if test="itemCode != null">
+                item_code = #{itemCode},
+            </if>
+            <if test="itemName != null">
+                item_name = #{itemName},
+            </if>
+            <if test="regulation != null">
+                regulation = #{regulation},
+            </if>
+            <if test="status != null">
+                status = #{status},
+            </if>
+            <if test="screenshot != null">
+                screenshot = #{screenshot},
+            </if>
+            <if test="rangeCode != null">
+                range_code = #{rangeCode},
+            </if>
+            <if test="rangeCn != null">
+                range_cn = #{rangeCn},
+            </if>
+            <if test="checkId != null">
+                check_id = #{checkId}
+            </if>
+        </set>
+        WHERE
+        id = #{id}
+    </update>
+</mapper>

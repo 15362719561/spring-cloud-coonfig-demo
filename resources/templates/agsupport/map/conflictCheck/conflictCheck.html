@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>冲突检测配置</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" th:href="@{/agsupport/map/css/lib/element.ui-v2.10.1.css}">
+    <link rel="stylesheet" th:href="@{/agsupport/map/conflictCheck/conflictCheck.css}">
+    <script>
+        var ctx = '[[@{/}]]';
+    </script>
+</head>
+<body>
+<div id="app" v-cloak>
+    <!--工具条-->
+    <el-col :span="24" class="toolbar"
+            v-if="conflictCheck.conflictCheckLayerViewVisible"
+            style="padding: 8px 15px;margin-bottom: 0px;background: #f2f2f2;margin: 10px 0px;">
+        <el-form :inline="true">
+            <el-form-item>
+                <el-input  @input="searchKeyChange"
+                        v-model="conflictCheck.layerSearch" placeholder="输入关键字查询" size="medium">
+                    <i class="el-icon-search el-input__icon" v-if="conflictCheck.layerSearch === ''" slot="suffix"
+                       style="font-weight: bold"></i>
+                    <i class="el-icon-close el-input__icon"  v-if="conflictCheck.layerSearch !== ''"
+                       slot="suffix"
+                       @click="clearSearch"
+                       style="font-weight: bold"></i>
+                </el-input>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" size="small" @click="openLayerResourceDialog">图层导入</el-button>
+                <el-button type="primary" size="small" @click="showAddLayerView">新增</el-button>
+                <el-button type="primary" size="small" @click="clearSearch">刷新</el-button>
+                <el-button type="danger" size="small" @click="deleteSelectedLayers">删除</el-button>
+            </el-form-item>
+        </el-form>
+    </el-col>
+
+
+    <!--图层列表-->
+    <el-table
+              :data="conflictCheck.layers"
+              sortable="true"
+              style="width: 100%"
+              :header-cell-style="{background:'#eef1f6',color:'#606266',height:'40px'}"
+              header-align="center"
+              type="index"
+              row-key="id"
+              ref="conflictCheckLayerTable"
+              show-overflow-tooltip="true"
+              @row-dblclick="showEditLayerView"
+              @selection-change="selsChange"
+              v-loading="conflictCheck.layersTableLoading"
+              :height="conflictCheck.layersTableHeight"
+              v-if="conflictCheck.conflictCheckLayerViewVisible">
+        <el-table-column type="selection" width="40">
+        </el-table-column>
+        <el-table-column prop="layerType" label="图层类型" width="160" align="center" sortable :formatter="layerTypeFormatter">
+        </el-table-column>
+        <el-table-column prop="layerName" label="图层名称" width="160" align="center" sortable>
+        </el-table-column>
+        <el-table-column prop="layerAliasName" label="图层别名" width="160" align="center" sortable>
+        </el-table-column>
+        <el-table-column prop="nameField" width="100" label="名称字段" align="center" sortable>
+        </el-table-column>
+        <el-table-column prop="typeField" width="100" label="编码字段" align="center" sortable>
+        </el-table-column>
+        <el-table-column prop="layerUrl" label="服务地址">
+        </el-table-column>
+        <el-table-column align="center" width="220">
+            <template slot="header" slot-scope="scope">操作</template>
+            <template slot-scope="scope">
+                <el-button size="mini" type="primary" @click="showLayerLandTypesView(scope.row)">配置</el-button>
+                <el-button size="mini" plain @click="showEditLayerView(scope.row)">编辑</el-button>
+                <!--<el-button size="mini" type="danger" @click="deleteLayer(scope.row)">删除</el-button>-->
+            </template>
+        </el-table-column>
+    </el-table>
+
+   <!--分页工具条-->
+    <el-col :span="24" class="toolbar"
+            v-if="conflictCheck.conflictCheckLayerViewVisible"
+            style="padding: 10px 8px;margin-bottom: 0px;background: #f2f2f2;margin-top:10px;position: absolute;left: 0;bottom: 0">
+        <el-pagination
+                background
+                layout="total, sizes, prev, pager, next, jumper"
+                @current-change="handleLayersPageChange"
+                :page-size="conflictCheck.rows"
+                :current-page="conflictCheck.currentPage"
+                :page-count="Math.ceil(conflictCheck.total / conflictCheck.rows)"
+                :total="conflictCheck.total"
+                style="float:right;margin-right: 20px;">
+        </el-pagination>
+    </el-col>
+
+    <!--图层编辑界面-->
+    <el-dialog
+            width="60%"
+            title="图层信息编辑"
+            :close-on-click-modal="false"
+            :visible.sync="conflictCheck.editLayerViewVisible">
+        <el-form :model="conflictCheck.editLayerForm" label-width="100px" :rules="conflictCheck.layerFormRules" ref="editLayerForm">
+            <el-form-item label="图层类型:" prop="layerType">
+                <el-select @change="layerTypeSelectChange" v-model="conflictCheck.layerTypeSelectValue" size="small" placeholder="请选择">
+                    <el-option
+                            v-for="item in conflictCheck.layerTypes"
+                            :key="item.code"
+                            :label="item.name"
+                            :value="item.code">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="图层名称:" prop="layerName">
+                <el-input v-model="conflictCheck.editLayerForm.layerName" auto-complete="off" size="medium"></el-input>
+            </el-form-item>
+            <el-form-item label="图层别称:" prop="layerAliasName">
+                <el-input v-model="conflictCheck.editLayerForm.layerAliasName" auto-complete="off" size="medium"></el-input>
+            </el-form-item>
+            <el-form-item label="服务地址:" prop="layerUrl">
+                <el-input v-model="conflictCheck.editLayerForm.layerUrl" auto-complete="off" size="medium"></el-input>
+            </el-form-item>
+            <el-form-item label="名称字段:" prop="nameField">
+                <el-select
+                        @change="layerNameFieldsSelectChange"
+                        @focus="resetLayerFields"
+                        v-model="conflictCheck.layerNameFieldsSelectValue"
+                        size="small"
+                        placeholder="请选择">
+                    <el-option
+                            v-for="item in conflictCheck.layerFields"
+                            :key="item.name"
+                            :label="item.name === item.alias ? item.alias : item.name + '(' + item.alias + ')'"
+                            :value="item.name">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="编码字段:" prop="typeField">
+                <el-select
+                        @change="layerTypeFieldsSelectChange"
+                        @focus="resetLayerFields"
+                        v-model="conflictCheck.layerTypeFieldsSelectValue"
+                        size="small" placeholder="请选择">
+                    <el-option
+                            v-for="item in conflictCheck.layerFields"
+                            :key="item.name"
+                            :label="item.name === item.alias ? item.alias : item.name + '(' + item.alias + ')'"
+                            :value="item.name">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button size="medium" @click.native="conflictCheck.editLayerViewVisible = false">取消</el-button>
+            <el-button size="medium" type="primary" @click.native="saveEditLayer()">保存</el-button>
+        </div>
+    </el-dialog>
+
+    <!--图层新增界面-->
+    <el-dialog
+            title="新增图层信息"
+            :close-on-click-modal="false"
+            :visible.sync="conflictCheck.addLayerViewVisible">
+        <el-form :model="conflictCheck.addLayerForm" label-width="100px" :rules="conflictCheck.layerFormRules" ref="addLayerForm" >
+            <el-form-item label="图层类型:" prop="layerType">
+                <el-select @change="layerTypeSelectChange" v-model="conflictCheck.layerTypeSelectValue" size="small" placeholder="请选择">
+                    <el-option
+                            v-for="item in conflictCheck.layerTypes"
+                            :key="item.code"
+                            :label="item.name"
+                            :value="item.code">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="图层名称:" prop="layerName">
+                <el-input v-model="conflictCheck.addLayerForm.layerName" size="medium" auto-complete="off"></el-input>
+            </el-form-item>
+            <el-form-item label="图层别称:" prop="layerAliasName">
+                <el-input v-model="conflictCheck.addLayerForm.layerAliasName" size="medium" auto-complete="off"></el-input>
+            </el-form-item>
+            <el-form-item label="服务地址:" prop="layerUrl">
+                <el-input v-model="conflictCheck.addLayerForm.layerUrl" size="medium" auto-complete="off"></el-input>
+            </el-form-item>
+            <el-form-item label="名称字段:" prop="nameField">
+                <el-select
+                        @change="layerNameFieldsSelectChange"
+                        @focus="resetLayerFields"
+                        size="small"
+                        v-model="conflictCheck.layerNameFieldsSelectValue"
+                        placeholder="请选择">
+                    <el-option
+                            v-for="item in conflictCheck.addLayerFields"
+                            :key="item.name"
+                            :label="item.name === item.alias ? item.alias : item.name + '(' + item.alias + ')'"
+                            :value="item.name">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="编码字段:" prop="typeField">
+                <el-select
+                        @change="layerTypeFieldsSelectChange"
+                        @focus="resetLayerFields"
+                        size="small"
+                        v-model="conflictCheck.layerTypeFieldsSelectValue"
+                        placeholder="请选择">
+                    <el-option
+                            v-for="item in conflictCheck.addLayerFields"
+                            :key="item.name"
+                            :label="item.name === item.alias ? item.alias : item.name + '(' + item.alias + ')'"
+                            :value="item.name">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button size="medium" @click.native="conflictCheck.addLayerViewVisible = false">取消</el-button>
+            <el-button size="medium" type="primary" @click.native="addLayer()">保存</el-button>
+        </div>
+    </el-dialog>
+
+    <!-- 用地性质配置界面-->
+    <div id="conflictCheckLayerLandTypeManage" v-if="conflictCheck.landTypesViewVisible" ref="transfer">
+        <el-page-header
+                @back="showConflictCheckLayerView"
+                content="用地类型配置"
+                style="padding: 10px 5px;background: rgb(242, 242, 242);"
+        ></el-page-header>
+        <el-transfer id="layerLandTypesTransfer"
+                     filterable
+                     v-loading="conflictCheck.landTypesTransferLoading"
+                     :style="{ height: conflictCheck.landTypesTransferHeight + 'px'}"
+                     filter-placeholder="请输入用地性质查询"
+                     :button-texts="['到左边', '到右边']"
+                     v-model="conflictCheck.landTypesSelectIds"
+                     :titles="['建设用地', '非建设用地']"
+                     :props="{ key: 'id', label: 'landName', code: 'landCode'}"
+                     @change="transferChange"
+                     @left-check-change="transferLeftCheckChange"
+                     @right-check-change="transferRightCheckChange"
+                     :data="conflictCheck.layerLandTypes">
+                <span slot-scope="{ option }">
+                    <span style="display: inline-block;width: calc(18vw)">{{option.landCode}} </span>
+                    <span style="display: inline-block"> {{ option.landName }}</span>
+                </span>
+            <el-button @click.native="showImportLandTypeView(1)" class="transfer-footer" slot="left-footer" size="mini" type="primary" icon="el-icon-upload">excel</el-button>
+            <el-button @click.native="showAddLandTypeView(1)" class="transfer-footer" slot="left-footer" size="mini" type="success" icon="el-icon-plus">新增</el-button>
+            <el-button @click.native="showEditLandTypeView(1)" :disabled="conflictCheck.jsydLandTypeForms.length !== 1" class="transfer-footer" slot="left-footer" size="mini" type="primary" icon="el-icon-edit">修改</el-button>
+            <el-button @click.native="deleteLandTypes(1)" :disabled="conflictCheck.jsydLandTypeForms.length === 0" class="transfer-footer" slot="left-footer" size="mini" type="danger" icon="el-icon-delete">删除</el-button>
+            <el-button @click.native="showImportLandTypeView(0)" class="transfer-footer" slot="right-footer" size="mini" type="primary" icon="el-icon-upload">excel</el-button>
+            <el-button @click.native="showAddLandTypeView(0)" class="transfer-footer" slot="right-footer" size="mini" type="success" icon="el-icon-plus">新增</el-button>
+            <el-button @click.native="showEditLandTypeView(0)" :disabled="conflictCheck.fjsydLandTypeForms.length !== 1" class="transfer-footer" slot="right-footer" size="mini" type="primary" icon="el-icon-edit">修改</el-button>
+            <el-button @click.native="deleteLandTypes(0)" :disabled="conflictCheck.fjsydLandTypeForms.length === 0" class="transfer-footer" slot="right-footer" size="mini" type="danger" icon="el-icon-delete">删除</el-button>
+        </el-transfer>
+    </div>
+
+    <!--新增用地性质界面-->
+    <el-dialog
+            title="新增用地性质"
+            width="480px"
+            :close-on-click-modal="false"
+            :visible.sync="conflictCheck.addLandTypeViewVisible">
+        <el-form :model="conflictCheck.addLandTypeForm" label-width="100px" :rules="conflictCheck.landTypeFormRules" ref="addLandTypeForm" >
+            <el-form-item label="用地编码:" prop="landCode">
+                <el-input v-model="conflictCheck.addLandTypeForm.landCode" auto-complete="off"></el-input>
+            </el-form-item>
+            <el-form-item label="用地性质:" prop="landName">
+                <el-input v-model="conflictCheck.addLandTypeForm.landName" auto-complete="off"></el-input>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button size="medium" @click.native="conflictCheck.addLandTypeViewVisible = false">取消</el-button>
+            <el-button size="medium" type="primary" @click="addLandType" >保存</el-button>
+        </div>
+    </el-dialog>
+
+    <!--编辑用地性质界面-->
+    <el-dialog
+            title="编辑用地性质"
+            width="480px"
+            :close-on-click-modal="false"
+            :visible.sync="conflictCheck.editLandTypeViewVisible">
+        <el-form :model="conflictCheck.editLandTypeForm" label-width="100px" :rules="conflictCheck.landTypeFormRules" ref="editLandTypeForm" >
+            <el-form-item label="用地编码:" prop="landCode">
+                <el-input v-model="conflictCheck.editLandTypeForm.landCode" auto-complete="off"></el-input>
+            </el-form-item>
+            <el-form-item label="用地性质:" prop="landName">
+                <el-input v-model="conflictCheck.editLandTypeForm.landName" auto-complete="off"></el-input>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button size="medium" @click.native="conflictCheck.editLandTypeViewVisible = false">取消</el-button>
+            <el-button size="medium" type="primary" @click="editLandType">保存</el-button>
+        </div>
+    </el-dialog>
+
+    <!--导入用地性质界面-->
+    <el-dialog
+            title="导入用地性质"
+            width="480px"
+            :close-on-click-modal="false"
+            @closed="abortUpload"
+            :visible.sync="conflictCheck.importLandTypeViewVisible">
+        <div slot="title" class="header-title">
+            <span class="title-age">导入用地性质</span>
+            <el-popover style="float: right;margin-right: 30px;"
+                    placement="bottom-start"
+                    title="提示"
+                    width="200"
+                    trigger="hover"
+                    content="上传表格内容需包含【用地性质名称】和【用地性质编码】列">
+                <i slot="reference" class="el-icon-question" style="color: #409EFF;font-size: 20px;"></i>
+            </el-popover>
+
+        </div>
+        <el-upload
+                ref="uploadExcel"
+                :action="ctx + '/agsupport/conflictCheck/importExcel'"
+                drag
+                :limit="1"
+                accept=".xls,.xlsx"
+                :multiple="false"
+                :show-file-list="true"
+                :file-list="conflictCheck.fileList"
+                :data="conflictCheck.uploadData"
+                :on-exceed="uploadLimit"
+                :before-upload="uploadBefore"
+                :on-success="uploadSuccess"
+                :auto-upload="false">
+            <i class="el-icon-upload"></i>
+            <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+            <div slot="tip" class="el-upload__tip">只能上传excel文件</div>
+        </el-upload>
+        <div slot="footer" class="dialog-footer">
+            <el-button size="small" type="primary" @click="submitUpload">上传到服务器</el-button>
+            <el-button style="margin-left: 10px;" size="small" type="danger" @click="abortUpload">取消上传</el-button>
+        </div>
+    </el-dialog>
+
+    <!--图层数据资源列表-->
+    <el-dialog
+            id="loadLayerResourceDialog"
+            :modal-append-to-body="false"
+            width="70%"
+            v-loading="conflictCheck.loadLayerResourceLoading"
+            :element-loading-text="conflictCheck.loadLayerResourceLoadingTip"
+            :close-on-click-modal="false"
+            :visible.sync="conflictCheck.loadLayerResourceDialogVisible"
+            title="数据资源">
+        <el-container style="height: calc(100% - 60px)">
+            <el-header style="height: auto;">
+                <!--工具条-->
+                <el-col :span="24" class="toolbar" style="text-align: right;">
+                    <el-form :inline="true">
+                        <el-form-item>
+                            <el-input @input="resourceLayerSearchKeyChange"
+                                      v-model="conflictCheck.resourceLayersSearch" placeholder="输入关键字查询" size="medium">
+                                <i class="el-icon-search el-input__icon" v-if="conflictCheck.resourceLayersSearch === ''" slot="suffix"
+                                   style="font-weight: bold"></i>
+                                <i class="el-icon-close el-input__icon"  v-if="conflictCheck.resourceLayersSearch !== ''"
+                                   slot="suffix"
+                                   @click="clearResourceLayerSearch"
+                                   style="font-weight: bold"></i>
+                            </el-input>
+                        </el-form-item>
+                        <el-form-item>
+                            <el-button type="primary" @click="improtResourceLayer" size="small">导入图层</el-button>
+                        </el-form-item>
+                    </el-form>
+                </el-col>
+            </el-header>
+            <el-main style="height: calc(100% - 60px)">
+                <el-table :data="conflictCheck.resourceLayers"
+                          sortable="true" style="width: 100%"
+                          :height="350"
+                          :header-cell-style="{background:'#eef1f6',color:'#606266',height:'40px'}"
+                          header-align="center"
+                          row-key="id"
+                          ref="resourceLayerTable"
+                          show-overflow-tooltip="true">
+                    <el-table-column type="selection" width="50"></el-table-column>
+                    <el-table-column prop="name" label="图层名称"></el-table-column>
+                    <el-table-column prop="layerTable" label="图层表名"></el-table-column>
+                    <el-table-column prop="layerTypeCn" label="图层类型"></el-table-column>
+                    <el-table-column prop="dirPath" label="所在目录"></el-table-column>
+                </el-table>
+            </el-main>
+        </el-container>
+        <span slot="footer" class="dialog-footer">
+            <el-row>
+                <el-pagination
+                        background
+                        layout="total, sizes, prev, pager, next, jumper"
+                        @current-change="handleResourceLayersPageChange"
+                        :page-size="conflictCheck.resourceLayersRows"
+                        :current-page="conflictCheck.resourceLayersCurrentPage"
+                        :page-count="Math.ceil(conflictCheck.resourceLayersTotal / conflictCheck.resourceLayersRows)"
+                        :total="conflictCheck.resourceLayersTotal"
+                        style="float:right;margin-right: 20px;">
+            </el-pagination>
+            </el-row>
+        </span>
+    </el-dialog>
+</div>
+<script th:src="@{/agsupport/map/js/lib/vue-v2.5.22.js}"></script>
+<script th:src="@{/agsupport/map/js/lib/jquery-2.2.4.min.js}"></script>
+<script th:src="@{/agsupport/map/js/lib/element.ui-v2.10.1.js}"></script>
+<script th:src="@{/agsupport/map/conflictCheck/conflictCheck.js}"></script>
+<script th:src="@{/agsupport/map/js/interact/interact.min-v1.6.2.js}"></script>
+<script th:src="@{/agsupport/map/js/interact/common.js}"></script>
+</body>
+</html>
